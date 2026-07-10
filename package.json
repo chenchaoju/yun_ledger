@@ -1,0 +1,15 @@
+{
+  "name": "yun-accounting",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "pc:install": "npm --prefix pc install",
+    "mobile:install": "npm --prefix mobile install",
+    "pc:dev": "npm --prefix pc run dev",
+    "mobile:dev": "npm --prefix mobile run dev",
+    "pc:build": "npm --prefix pc run build",
+    "mobile:build": "npm --prefix mobile run build",
+    "build": "npm run pc:build && npm run mobile:build"
+  }
+}
+
