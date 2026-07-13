@@ -20,6 +20,7 @@
         <span>预设工资</span>
         <span>{{ defaultSalaryLabel }}</span>
       </button>
+      <RecurringExpenseSettings />
       <button type="button" class="settings-cell settings-row" @click="openAvatarDialog">
         <span>头像</span>
         <span>{{ avatarSummary }}</span>
@@ -183,6 +184,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import DataTransferButton from '../components/DataTransferButton.vue'
+import RecurringExpenseSettings from '../components/RecurringExpenseSettings.vue'
 import {
   buildCustomCategory,
   expenseCategories,

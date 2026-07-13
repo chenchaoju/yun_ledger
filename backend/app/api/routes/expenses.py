@@ -10,6 +10,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.expense import Expense
 from app.models.user import User
 from app.schemas.expense import ExpenseCreate, ExpenseList, ExpenseRead, ExpenseUpdate
+from app.services.recurring_expenses import materialize_recurring_expenses
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -31,6 +32,7 @@ def list_expenses(
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> ExpenseList:
+    materialize_recurring_expenses(db, current_user.id)
     filters = [Expense.user_id == current_user.id]
 
     if start_date:
@@ -102,4 +104,3 @@ def delete_expense(
     db.delete(expense)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

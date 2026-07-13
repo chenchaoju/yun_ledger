@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
-from app.api.routes import auth, data_transfer, expenses, incomes, stats
+from app.api.routes import auth, data_transfer, expenses, incomes, recurring_expenses, stats
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(expenses.router, prefix=settings.api_prefix)
 app.include_router(incomes.router, prefix=settings.api_prefix)
+app.include_router(recurring_expenses.router, prefix=settings.api_prefix)
 app.include_router(stats.router, prefix=settings.api_prefix)
 app.include_router(data_transfer.router, prefix=settings.api_prefix)
 
