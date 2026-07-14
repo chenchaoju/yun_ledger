@@ -20,6 +20,7 @@
           <span>用户名</span>
           <span>{{ displayName }}</span>
         </button>
+        <RecurringExpenseSettings />
         <button type="button" class="settings-cell settings-row" @click="openAvatarDialog">
           <span>头像</span>
           <span>{{ avatarSummary }}</span>
@@ -98,6 +99,7 @@
 </template>
 
 <script setup>
+import RecurringExpenseSettings from '../components/RecurringExpenseSettings.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

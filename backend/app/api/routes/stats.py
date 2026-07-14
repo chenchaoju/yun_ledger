@@ -21,6 +21,7 @@ from app.schemas.stats import (
     TrendPoint,
 )
 from app.services.income_items import extra_income_total, normalize_extra_income_items
+from app.services.recurring_expenses import materialize_recurring_expenses
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -37,6 +38,7 @@ def overview(
     month: int | None = Query(default=None, ge=1, le=12),
 ) -> OverviewStats:
     today = date.today()
+    materialize_recurring_expenses(db, current_user.id, today)
     selected_year = year or today.year
     selected_month = month or today.month
     days_in_month = monthrange(selected_year, selected_month)[1]
