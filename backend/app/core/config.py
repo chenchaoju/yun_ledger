@@ -7,15 +7,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "云记账"
+    app_name: str = "个人消费记录系统"
     environment: str = "development"
     api_prefix: str = "/api"
     secret_key: str = "change-this-secret-key"
     access_token_expire_minutes: int = 60 * 24 * 7
     database_url: str = "mysql+pymysql://root:root@127.0.0.1:3306/finance_data?charset=utf8mb4"
-    cors_origins: str = (
-        "http://localhost:5173,http://127.0.0.1:5173,"
-        "http://localhost:8023,http://127.0.0.1:8023"
+    cors_origins: str = "http://localhost:8023,http://127.0.0.1:8023,http://localhost:5173,http://127.0.0.1:5173"
+    cors_origin_regex: str | None = (
+        r"^http://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|"
+        r"172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$"
     )
 
     model_config = SettingsConfigDict(

@@ -1,8 +1,8 @@
 <template>
-  <button type="button" class="quick-add-fab" aria-label="快捷记账" @click="openDialog">
+  <button type="button" class="quick-add-fab" aria-label="快捷记账" @click="openExpenseDialog">
     <el-icon :size="24"><Plus /></el-icon>
   </button>
-  <ExpenseFormDialog v-model="dialogVisible" @saved="onSaved" />
+  <ExpenseFormDialog v-model="expenseDialogVisible" @saved="onSaved" />
 </template>
 
 <script setup>
@@ -11,10 +11,10 @@ import { Plus } from '@element-plus/icons-vue'
 import ExpenseFormDialog from './ExpenseFormDialog.vue'
 import { notifyFinanceDataChanged } from '../utils/events'
 
-const dialogVisible = ref(false)
+const expenseDialogVisible = ref(false)
 
-function openDialog() {
-  dialogVisible.value = true
+function openExpenseDialog() {
+  expenseDialogVisible.value = true
 }
 
 function onSaved() {

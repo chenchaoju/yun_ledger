@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ExtraIncomeItem(BaseModel):
     name: str = Field(default="额外收入", min_length=1, max_length=60)
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    occurred_at: date | None = None
 
     @field_validator("name", mode="before")
     @classmethod
@@ -19,6 +21,7 @@ class ExtraIncomeItem(BaseModel):
 class ExtraIncomeItemRead(BaseModel):
     name: str
     amount: float
+    occurred_at: date | None = None
 
 
 class MonthlyIncomeUpsert(BaseModel):

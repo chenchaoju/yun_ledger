@@ -1,11 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import { useAuthStore } from '../stores/auth'
-import AnalysisView from '../views/AnalysisView.vue'
-import DashboardView from '../views/DashboardView.vue'
-import LoginView from '../views/LoginView.vue'
-import RecordsView from '../views/RecordsView.vue'
-import SettingsView from '../views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,7 +8,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: () => import('../views/LoginView.vue'),
       meta: { title: '登录' }
     },
     {
@@ -24,25 +19,25 @@ const router = createRouter({
         {
           path: '',
           name: 'dashboard',
-          component: DashboardView,
+          component: () => import('../views/DashboardView.vue'),
           meta: { title: '消费概览' }
         },
         {
           path: 'records',
           name: 'records',
-          component: RecordsView,
+          component: () => import('../views/RecordsView.vue'),
           meta: { title: '消费记录' }
         },
         {
           path: 'analysis',
           name: 'analysis',
-          component: AnalysisView,
+          component: () => import('../views/AnalysisView.vue'),
           meta: { title: '统计分析' }
         },
         {
           path: 'settings',
           name: 'settings',
-          component: SettingsView,
+          component: () => import('../views/SettingsView.vue'),
           meta: { title: '账号设置' }
         }
       ]

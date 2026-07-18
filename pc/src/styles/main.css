@@ -125,6 +125,15 @@ textarea {
   white-space: nowrap;
 }
 
+.record-income-amount {
+  color: #0f766e;
+}
+
+.record-muted-action {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .settings-page {
   display: grid;
   gap: 18px;
@@ -227,6 +236,100 @@ textarea {
   content: "";
 }
 
+.settings-dialog-tip {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.recurring-manager {
+  display: grid;
+  gap: 14px;
+}
+
+.recurring-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.recurring-period-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recurring-enabled {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.recurring-form-actions,
+.recurring-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recurring-form-actions .el-button + .el-button,
+.recurring-actions .el-button + .el-button {
+  margin-left: 0;
+}
+
+.recurring-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recurring-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.recurring-row > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.recurring-row strong,
+.recurring-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recurring-row strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.recurring-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.recurring-actions {
+  flex: 0 0 auto;
+}
+
 .page-stack {
   display: flex;
   flex-direction: column;
@@ -323,6 +426,70 @@ textarea {
 .base-chart {
   width: 100%;
   min-height: 320px;
+}
+
+.category-chart-card .base-chart {
+  min-height: 250px;
+}
+
+.category-structure-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-structure-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #edf1f7;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.category-structure-item span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.category-structure-item i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--category-color);
+}
+
+.category-structure-item b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-structure-item strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.category-structure-item em {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 .el-card {
@@ -706,9 +873,18 @@ textarea {
     word-break: break-word;
   }
 
-  .mobile-record-actions .el-button {
-    flex: 1 1 0;
-  }
+.mobile-record-actions .el-button {
+  flex: 1 1 0;
+}
+
+.record-income-amount {
+  color: #0f766e;
+}
+
+.record-muted-action {
+  color: var(--muted);
+  font-size: 13px;
+}
 
   .finance-dialog .el-dialog__body {
     max-height: min(68vh, 620px);
@@ -732,6 +908,19 @@ textarea {
 
   .avatar-choice-grid {
     grid-template-columns: 1fr;
+  }
+
+  .recurring-period-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recurring-actions {
+    justify-content: flex-end;
   }
 
   .pagination-row {

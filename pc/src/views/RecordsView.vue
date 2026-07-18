@@ -7,6 +7,7 @@
         </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="filters.category" clearable class="filter-select">
+            <el-option label="额外收入" value="额外收入" />
             <el-option v-for="item in expenseCategories" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -20,20 +21,28 @@
 
     <el-card shadow="never">
       <el-table v-loading="loading" :data="items" empty-text="暂无记录" class="desktop-record-table">
-        <el-table-column prop="spent_at" label="日期" width="130" />
+        <el-table-column prop="record_date" label="日期" width="130" />
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">
-            <el-tag :color="categoryColorMap[row.category]" effect="dark" round>{{ row.category }}</el-tag>
+            <el-tag v-if="row.record_type === 'income'" type="success" round>{{ row.category }}</el-tag>
+            <el-tag v-else :color="categoryColorMap[row.category]" effect="dark" round>{{ row.category }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="note" label="备注" min-width="180" show-overflow-tooltip />
         <el-table-column label="金额" width="150" align="right">
-          <template #default="{ row }">{{ currency(row.amount) }}</template>
+          <template #default="{ row }">
+            <span :class="{ 'record-income-amount': row.record_type === 'income' }">
+              {{ row.record_type === 'income' ? '+' : '' }}{{ currency(row.amount) }}
+            </span>
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button :icon="Edit" circle @click="openEdit(row)" />
-            <el-button :icon="Delete" circle type="danger" @click="confirmDelete(row)" />
+            <template v-if="row.record_type === 'expense'">
+              <el-button :icon="Edit" circle @click="openEdit(row)" />
+              <el-button :icon="Delete" circle type="danger" @click="confirmDelete(row)" />
+            </template>
+            <span v-else class="record-muted-action">{{ row.record_type === 'income' ? '收入' : '固定支出' }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -41,14 +50,17 @@
       <div v-loading="loading" class="mobile-record-list">
         <article v-for="row in items" :key="row.id" class="mobile-record-card">
           <div class="mobile-record-main">
-            <el-tag :color="categoryColorMap[row.category]" effect="dark" round>{{ row.category }}</el-tag>
-            <strong>{{ currency(row.amount) }}</strong>
+            <el-tag v-if="row.record_type === 'income'" type="success" round>{{ row.category }}</el-tag>
+            <el-tag v-else :color="categoryColorMap[row.category]" effect="dark" round>{{ row.category }}</el-tag>
+            <strong :class="{ 'record-income-amount': row.record_type === 'income' }">
+              {{ row.record_type === 'income' ? '+' : '' }}{{ currency(row.amount) }}
+            </strong>
           </div>
           <div class="mobile-record-meta">
-            <span>{{ row.spent_at }}</span>
+            <span>{{ row.record_date }}</span>
             <span>{{ row.note || '无备注' }}</span>
           </div>
-          <div class="mobile-record-actions">
+          <div v-if="row.record_type === 'expense'" class="mobile-record-actions">
             <el-button :icon="Edit" @click="openEdit(row)">编辑</el-button>
             <el-button :icon="Delete" type="danger" @click="confirmDelete(row)">删除</el-button>
           </div>
@@ -117,7 +129,7 @@ function buildParams() {
 async function loadExpenses() {
   loading.value = true
   try {
-    const { data } = await http.get('/expenses', { params: buildParams() })
+    const { data } = await http.get('/records', { params: buildParams() })
     items.value = data.items
     total.value = data.total
   } finally {
@@ -142,15 +154,21 @@ function openCreate() {
 }
 
 function openEdit(row) {
-  editingExpense.value = { ...row }
+  editingExpense.value = {
+    id: row.source_id,
+    amount: row.amount,
+    category: row.category,
+    note: row.note,
+    spent_at: row.record_date
+  }
   dialogVisible.value = true
 }
 
 async function confirmDelete(row) {
-  await ElMessageBox.confirm(`删除 ${row.spent_at} 的 ${row.category} 记录？`, '确认删除', {
+  await ElMessageBox.confirm(`删除 ${row.record_date} 的 ${row.category} 记录？`, '确认删除', {
     type: 'warning'
   })
-  await http.delete(`/expenses/${row.id}`)
+  await http.delete(`/expenses/${row.source_id}`)
   ElMessage.success('已删除')
   notifyFinanceDataChanged()
   loadExpenses()

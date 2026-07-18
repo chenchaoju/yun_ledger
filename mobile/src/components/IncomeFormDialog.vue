@@ -98,7 +98,8 @@ function createExtraIncomeItem(item = {}) {
   return {
     key: extraIncomeKey,
     name: item.name || '',
-    amount: Number(item.amount || 0)
+    amount: Number(item.amount || 0),
+    occurred_at: item.occurred_at || null
   }
 }
 
@@ -130,7 +131,8 @@ function normalizedExtraIncomeItems() {
   return form.extra_income_items
     .map((item) => ({
       name: String(item.name || '额外收入').trim() || '额外收入',
-      amount: Number(item.amount || 0)
+      amount: Number(item.amount || 0),
+      occurred_at: item.occurred_at || null
     }))
     .filter((item) => item.amount > 0)
 }

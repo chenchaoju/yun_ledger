@@ -20,6 +20,7 @@
 
         <div v-if="form.extra_income_items.length" class="extra-income-list">
           <div v-for="(item, index) in form.extra_income_items" :key="item.key" class="extra-income-row">
+            <el-date-picker v-model="item.received_at" type="date" value-format="YYYY-MM-DD" class="extra-income-date" />
             <el-input v-model="item.name" maxlength="60" placeholder="收入来源" class="extra-income-source" />
             <el-input-number
               v-model="item.amount"
@@ -44,6 +45,7 @@
 </template>
 
 <script setup>
+import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
 import { Delete, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -97,6 +99,7 @@ function createExtraIncomeItem(item = {}) {
   extraIncomeKey += 1
   return {
     key: extraIncomeKey,
+    received_at: item.received_at || dayjs().format('YYYY-MM-DD'),
     name: item.name || '',
     amount: Number(item.amount || 0)
   }
@@ -130,7 +133,8 @@ function normalizedExtraIncomeItems() {
   return form.extra_income_items
     .map((item) => ({
       name: String(item.name || '额外收入').trim() || '额外收入',
-      amount: Number(item.amount || 0)
+      amount: Number(item.amount || 0),
+      received_at: item.received_at || dayjs().format('YYYY-MM-DD')
     }))
     .filter((item) => item.amount > 0)
 }
@@ -189,11 +193,12 @@ watch(() => props.modelValue, (value) => {
 
 .extra-income-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 36px;
+  grid-template-columns: 136px minmax(0, 1fr) 160px 36px;
   gap: 10px;
   align-items: center;
 }
 
+.extra-income-date,
 .extra-income-source,
 .extra-income-amount {
   width: 100%;
@@ -201,7 +206,7 @@ watch(() => props.modelValue, (value) => {
 
 @media (max-width: 720px) {
   .extra-income-row {
-    grid-template-columns: minmax(0, 1fr) 140px 36px;
+    grid-template-columns: 1fr;
   }
 }
 </style>

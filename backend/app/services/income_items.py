@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
@@ -21,6 +22,18 @@ def item_value(item: Any, key: str, default: Any = None) -> Any:
     return getattr(item, key, default)
 
 
+def clean_income_date(value: Any) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value).strip()
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
+
+
 def normalize_extra_income_items(items: list[Any] | None, fallback_extra_income: Any = None) -> list[dict[str, float]]:
     normalized: list[dict[str, float]] = []
 
@@ -29,7 +42,11 @@ def normalize_extra_income_items(items: list[Any] | None, fallback_extra_income:
         amount = amount_to_decimal(item_value(item, "amount", 0))
         if amount <= 0:
             continue
-        normalized.append({"name": name[:60], "amount": float(amount)})
+        normalized_item = {"name": name[:60], "amount": float(amount)}
+        occurred_at = clean_income_date(item_value(item, "occurred_at"))
+        if occurred_at:
+            normalized_item["occurred_at"] = occurred_at
+        normalized.append(normalized_item)
 
     if normalized:
         return normalized

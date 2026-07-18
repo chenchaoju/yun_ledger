@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,19 +26,21 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> TokenRespons
     email = payload.email.strip().lower()
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请输入手机号或邮箱")
+    username = (payload.username or email.split("@", 1)[0]).strip()
     existing_user = db.scalar(select(User).where(User.email == email))
 
     if existing_user:
         if existing_user.password_hash:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="账号已注册")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="邮箱已注册")
 
+        existing_user.username = username
         existing_user.password_hash = get_password_hash(payload.password)
         db.add(existing_user)
         db.commit()
         db.refresh(existing_user)
         return build_token_response(existing_user)
 
-    user = User(email=email, password_hash=get_password_hash(payload.password))
+    user = User(email=email, username=username, password_hash=get_password_hash(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -69,7 +73,24 @@ def update_me(
         current_user.username = payload.username.strip()
     if payload.default_salary_income is not None:
         current_user.default_salary_income = payload.default_salary_income
+    if "opening_balance_date" in payload.model_fields_set:
+        current_user.opening_balance_date = payload.opening_balance_date
+    if "opening_balance_amount" in payload.model_fields_set:
+        next_opening_balance = payload.opening_balance_amount or 0
+        if current_user.opening_balance_amount != next_opening_balance:
+            current_user.opening_balance_reset_at = datetime.now()
+        current_user.opening_balance_amount = next_opening_balance
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    db.delete(current_user)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

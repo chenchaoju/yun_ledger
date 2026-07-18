@@ -1,15 +1,5 @@
 <template>
   <section class="page-stack">
-    <div class="toolbar-row">
-      <div class="period-picker">
-        <el-date-picker v-model="selectedMonth" type="month" value-format="YYYY-MM" />
-      </div>
-      <div class="toolbar-actions">
-        <el-button :icon="Wallet" @click="openIncome">收入</el-button>
-        <el-button type="primary" :icon="Plus" @click="openCreate">新增</el-button>
-      </div>
-    </div>
-
     <el-alert
       v-if="stats.monthly_income.is_over_salary"
       type="warning"
@@ -41,6 +31,15 @@
       <el-card shadow="never" class="chart-card">
         <template #header>本月分类结构</template>
         <BaseChart :option="categoryOption" :loading="loading" />
+        <div v-if="categoryStructureRows.length" class="category-structure-list">
+          <div v-for="item in categoryStructureRows" :key="item.category" class="category-structure-row">
+            <span>
+              <i :style="{ background: item.color }"></i>
+              <strong>{{ item.category }}</strong>
+            </span>
+            <em>{{ currency(item.total) }} · {{ item.percent }}%</em>
+          </div>
+        </div>
       </el-card>
       <el-card shadow="never" class="chart-card">
         <template #header>{{ selectedYear }} 年趋势</template>
@@ -65,7 +64,9 @@
       <div class="mobile-record-list">
         <article v-for="row in stats.recent_expenses" :key="row.id" class="mobile-record-card">
           <div class="mobile-record-main">
-            <el-tag :color="categoryColorMap[row.category]" effect="dark" round>{{ row.category }}</el-tag>
+            <span class="record-category-tag" :style="{ '--category-color': categoryColorMap[row.category] }">
+              {{ row.category }}
+            </span>
             <strong>{{ currency(row.amount) }}</strong>
           </div>
           <div class="mobile-record-meta">
@@ -77,31 +78,20 @@
       </div>
     </el-card>
 
-    <ExpenseFormDialog v-model="dialogVisible" @saved="loadStats" />
-    <IncomeFormDialog
-      v-model="incomeDialogVisible"
-      :year="selectedYear"
-      :month="selectedMonthNumber"
-      :income="stats.monthly_income"
-      @saved="loadStats"
-    />
   </section>
 </template>
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Calendar, Plus, Tickets, Timer, Wallet } from '@element-plus/icons-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Calendar, Tickets, Timer, Wallet } from '@element-plus/icons-vue'
 import BaseChart from '../components/BaseChart.vue'
-import ExpenseFormDialog from '../components/ExpenseFormDialog.vue'
-import IncomeFormDialog from '../components/IncomeFormDialog.vue'
 import { categoryChangedEvent, categoryColorMapFrom } from '../constants/categories'
+import { FINANCE_DATA_CHANGED } from '../utils/events'
 import { currency } from '../utils/format'
 import http from '../utils/http'
 
 const loading = ref(false)
-const dialogVisible = ref(false)
-const incomeDialogVisible = ref(false)
 const selectedMonth = ref(dayjs().format('YYYY-MM'))
 const stats = ref(emptyStats())
 const categoryColorMap = ref(categoryColorMapFrom())
@@ -152,15 +142,27 @@ const salaryBalanceMetric = computed(() => {
 })
 
 const metrics = computed(() => [
+  { label: '总余额', value: currency(stats.value.total_balance), icon: Wallet, tone: 'tone-teal' },
   { label: '本月支出', value: currency(stats.value.month_total), icon: Calendar, tone: 'tone-orange' },
   { label: '今日消费', value: currency(todayExpenseTotal.value), icon: Calendar, tone: todayOverspent.value ? 'tone-red' : 'tone-blue' },
   { label: '倒计时', value: monthCountdown.value, icon: Timer, tone: 'tone-blue' },
   { label: '工资收入', value: currency(stats.value.monthly_income.salary_income), icon: Wallet, tone: 'tone-blue' },
   { label: salaryBalanceMetric.value.label, value: salaryBalanceMetric.value.value, icon: Wallet, tone: 'tone-teal' },
-  { label: '额外收入', value: currency(stats.value.monthly_income.extra_income), icon: Wallet, tone: 'tone-teal' },
   { label: '笔数', value: `${stats.value.month_count} 笔`, icon: Tickets, tone: 'tone-pink' },
   { label: '日均', value: currency(stats.value.average_day), icon: Calendar, tone: 'tone-teal' }
 ])
+
+const categoryStructureRows = computed(() => {
+  const total = Number(stats.value.month_total || 0)
+  return stats.value.category_summary.map((item) => {
+    const value = Number(item.total || 0)
+    return {
+      ...item,
+      color: categoryColorMap.value[item.category] || '#64748b',
+      percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0
+    }
+  })
+})
 
 const categoryOption = computed(() => ({
   color: stats.value.category_summary.map((item) => categoryColorMap.value[item.category] || '#64748b'),
@@ -178,10 +180,9 @@ const categoryOption = computed(() => ({
       center: ['50%', '50%'],
       avoidLabelOverlap: true,
       label: {
-        formatter: (params) => `${params.name}\n${currency(params.value)}`,
-        fontSize: 12
+        show: false
       },
-      labelLine: { length: 14, length2: 18 },
+      labelLine: { show: false },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap.value[item.category] || '#64748b'
         return {
@@ -256,6 +257,7 @@ function emptyStats() {
   return {
     month_total: 0,
     year_total: 0,
+    total_balance: 0,
     year_count: 0,
     month_count: 0,
     average_day: 0,
@@ -278,6 +280,8 @@ function emptyStats() {
       extra_income: 0,
       total_income: 0,
       balance: 0,
+      total_balance: null,
+      has_expense: false,
       is_over_salary: false
     })),
     daily_expenses: [],
@@ -300,23 +304,18 @@ async function loadStats() {
   }
 }
 
-function openCreate() {
-  dialogVisible.value = true
-}
-
-function openIncome() {
-  incomeDialogVisible.value = true
-}
-
 onMounted(loadStats)
+watch(selectedMonth, loadStats)
 
 function refreshCategoryColors() {
   categoryColorMap.value = categoryColorMapFrom()
 }
 
 window.addEventListener(categoryChangedEvent, refreshCategoryColors)
+window.addEventListener(FINANCE_DATA_CHANGED, loadStats)
 
 onBeforeUnmount(() => {
   window.removeEventListener(categoryChangedEvent, refreshCategoryColors)
+  window.removeEventListener(FINANCE_DATA_CHANGED, loadStats)
 })
 </script>

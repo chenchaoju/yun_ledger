@@ -5,6 +5,10 @@
         <el-icon><Wallet /></el-icon>
         <span>云记账</span>
       </div>
+      <button type="button" class="sidebar-create-button" @click="quickDialogVisible = true">
+        <el-icon><Plus /></el-icon>
+        <span>新增支出</span>
+      </button>
       <el-menu :default-active="route.path" router class="sidebar-menu">
         <el-menu-item index="/">
           <el-icon><HomeFilled /></el-icon>
@@ -12,7 +16,7 @@
         </el-menu-item>
         <el-menu-item index="/records">
           <el-icon><Tickets /></el-icon>
-          <span>记录</span>
+          <span>明细</span>
         </el-menu-item>
         <el-menu-item index="/analysis">
           <el-icon><TrendCharts /></el-icon>
@@ -26,26 +30,34 @@
     </aside>
 
     <main class="app-main">
-      <header class="app-topbar">
-        <div>
+      <header v-if="showPageHeader" class="app-topbar">
+        <div class="app-topbar-main">
           <h1>{{ route.meta.title }}</h1>
           <p>{{ todayLabel }}</p>
         </div>
+        <ExtraIncomeButton />
       </header>
       <RouterView />
     </main>
-    <QuickAddButton />
+
+    <button type="button" class="quick-add-fab" aria-label="快捷新增支出" @click="quickDialogVisible = true">
+      <el-icon><Plus /></el-icon>
+    </button>
+    <ExpenseFormDialog v-model="quickDialogVisible" />
   </div>
 </template>
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Setting, Tickets, TrendCharts, Wallet } from '@element-plus/icons-vue'
-import QuickAddButton from './QuickAddButton.vue'
+import { HomeFilled, Plus, Setting, Tickets, TrendCharts, Wallet } from '@element-plus/icons-vue'
+import ExtraIncomeButton from './ExtraIncomeButton.vue'
+import ExpenseFormDialog from './ExpenseFormDialog.vue'
 
 const route = useRoute()
+const quickDialogVisible = ref(false)
 
+const showPageHeader = computed(() => route.name === 'dashboard')
 const todayLabel = computed(() => dayjs().format('YYYY年M月D日'))
 </script>

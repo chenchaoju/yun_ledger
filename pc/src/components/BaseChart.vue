@@ -4,7 +4,28 @@
 
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import * as echarts from 'echarts'
+import { BarChart, LineChart, PieChart } from 'echarts/charts'
+import {
+  GraphicComponent,
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent
+} from 'echarts/components'
+import { init, use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+
+use([
+  BarChart,
+  LineChart,
+  PieChart,
+  GridComponent,
+  GraphicComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent,
+  CanvasRenderer
+])
 
 const props = defineProps({
   option: {
@@ -29,7 +50,7 @@ function renderChart() {
 
 onMounted(async () => {
   await nextTick()
-  chart = echarts.init(chartRef.value)
+  chart = init(chartRef.value)
   observer = new ResizeObserver(() => chart?.resize())
   observer.observe(chartRef.value)
   renderChart()
@@ -43,4 +64,3 @@ onBeforeUnmount(() => {
   chart?.dispose()
 })
 </script>
-

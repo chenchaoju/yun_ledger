@@ -1,9 +1,13 @@
 <template>
-  <section class="page-stack">
-    <div class="toolbar-row">
-      <div class="period-picker">
-        <el-date-picker v-model="selectedYear" type="year" value-format="YYYY" />
-      </div>
+  <section class="analysis-page page-stack">
+    <div class="analysis-filter-panel">
+      <el-date-picker
+        v-model="selectedYear"
+        type="year"
+        value-format="YYYY"
+        :editable="false"
+        class="analysis-year-picker"
+      />
     </div>
 
     <el-alert
@@ -14,39 +18,37 @@
       :title="`${selectedYear}年${selectedMonth}月支出已超出工资收入 ${currency(Math.abs(stats.monthly_income.salary_balance))}`"
     />
 
-    <el-tabs v-model="activeAnalysisTab" class="analysis-tabs">
+    <el-tabs
+      v-model="activeAnalysisTab"
+      class="analysis-tabs"
+      @touchstart.passive="handleAnalysisTouchStart"
+      @touchend="handleAnalysisTouchEnd"
+    >
       <el-tab-pane label="年度账单" name="bill">
-        <el-card shadow="never" class="annual-ledger-panel">
-          <section v-loading="loading" class="annual-ledger">
-            <div class="annual-ledger-card" :class="{ negative: annualBillSummary.balance < 0 }">
-              <div class="annual-ledger-card-main">
-                <span>结余</span>
-                <strong>{{ billSummaryAmount(annualBillSummary.balance) }}</strong>
-              </div>
-              <div class="annual-ledger-card-foot">
-                <span>收入 <b>{{ billTableAmount(annualBillSummary.income) }}</b></span>
-                <span>支出 <b>{{ billTableAmount(annualBillSummary.expense) }}</b></span>
-              </div>
-              <i>¥</i>
-            </div>
+        <div class="annual-bill-card" :class="{ negative: annualBillSummary.balance < 0 }">
+          <span>{{ annualBillSummary.balance >= 0 ? '结余' : '超支' }}</span>
+          <strong>{{ formatPlainAmount(Math.abs(annualBillSummary.balance)) }}</strong>
+          <div>
+            <em>收入 <b>{{ formatPlainAmount(annualBillSummary.income) }}</b></em>
+            <em>支出 <b>{{ formatPlainAmount(annualBillSummary.expense) }}</b></em>
+          </div>
+          <i>¥</i>
+        </div>
 
-            <div class="annual-ledger-table" role="table" :aria-label="`${selectedYear}年度账单`">
-              <div class="annual-ledger-row annual-ledger-head" role="row">
-                <span role="columnheader">月份</span>
-                <span role="columnheader">月收入</span>
-                <span role="columnheader">月支出</span>
-                <span role="columnheader">月结余</span>
-              </div>
-              <div v-for="row in annualBillRows" :key="row.month" class="annual-ledger-row" role="row">
-                <strong role="cell">{{ row.monthLabel }}</strong>
-                <span role="cell">{{ billTableAmount(row.income) }}</span>
-                <span role="cell">{{ billTableAmount(row.expense) }}</span>
-                <span role="cell" :class="{ negative: row.balance < 0 }">{{ billTableAmount(row.balance) }}</span>
-              </div>
-              <el-empty v-if="!annualBillRows.length" description="暂无账单" :image-size="80" />
-            </div>
-          </section>
-        </el-card>
+        <div class="annual-bill-table">
+          <div class="annual-bill-head">
+            <span>月份</span>
+            <span>月收入</span>
+            <span>月支出</span>
+            <span>月结余</span>
+          </div>
+          <div v-for="row in annualBillRows" :key="row.month" class="annual-bill-row">
+            <strong>{{ String(row.month).padStart(2, '0') }}月</strong>
+            <span>{{ formatPlainAmount(row.income) }}</span>
+            <span>{{ formatPlainAmount(row.expense) }}</span>
+            <span :class="{ negative: row.balance < 0 }">{{ formatPlainAmount(row.balance) }}</span>
+          </div>
+        </div>
       </el-tab-pane>
       <el-tab-pane label="年度趋势" name="trend">
         <el-card shadow="never" class="chart-card">
@@ -68,6 +70,15 @@
           <BaseChart :option="annualBalanceOption" :loading="loading" />
         </el-card>
       </el-tab-pane>
+      <el-tab-pane label="余额分析" name="totalBalance">
+        <el-card shadow="never" class="chart-card">
+          <div class="chart-note">
+            <span><i class="legend-line blue"></i>蓝线=余额变化</span>
+            <span><i class="legend-dot teal"></i>节点=有收入或支出变化</span>
+          </div>
+          <BaseChart :option="totalBalanceOption" :loading="loading" />
+        </el-card>
+      </el-tab-pane>
       <el-tab-pane label="每日累计" name="daily">
         <el-card shadow="never" class="chart-card">
           <div class="chart-note">
@@ -79,26 +90,26 @@
         </el-card>
       </el-tab-pane>
       <el-tab-pane label="月度结构" name="category">
-        <div class="content-grid">
-          <el-card shadow="never" class="chart-card">
-            <div class="chart-note">
-              <span>点击图形可查看分类金额和占比</span>
+        <el-card shadow="never" class="chart-card">
+          <div class="monthly-structure-toolbar">
+            <el-select v-model="selectedMonth" class="month-select">
+              <el-option v-for="month in 12" :key="month" :label="`${month}月`" :value="month" />
+            </el-select>
+          </div>
+          <div class="chart-note">
+            <span>当前显示 {{ selectedYear }} 年 {{ selectedMonth }} 月分类结构</span>
+          </div>
+          <BaseChart :option="pieOption" :loading="loading" />
+          <div v-if="categoryStructureRows.length" class="category-structure-list">
+            <div v-for="item in categoryStructureRows" :key="item.category" class="category-structure-row">
+              <span>
+                <i :style="{ background: item.color }"></i>
+                <strong>{{ item.category }}</strong>
+              </span>
+              <em>{{ currency(item.total) }} · {{ item.percent }}%</em>
             </div>
-            <BaseChart :option="pieOption" :loading="loading" />
-          </el-card>
-          <el-card shadow="never">
-            <el-table :data="categoryRows" empty-text="暂无数据">
-              <el-table-column prop="category" label="分类" />
-              <el-table-column prop="count" label="笔数" width="90" />
-              <el-table-column label="金额" width="140" align="right">
-                <template #default="{ row }">{{ currency(row.total) }}</template>
-              </el-table-column>
-              <el-table-column label="占比" width="100" align="right">
-                <template #default="{ row }">{{ percent(row.ratio) }}</template>
-              </el-table-column>
-            </el-table>
-          </el-card>
-        </div>
+          </div>
+        </el-card>
       </el-tab-pane>
     </el-tabs>
 
@@ -107,55 +118,78 @@
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BaseChart from '../components/BaseChart.vue'
 import { categoryChangedEvent, categoryColorMapFrom } from '../constants/categories'
-import { currency, percent } from '../utils/format'
+import { currency } from '../utils/format'
 import http from '../utils/http'
 
 const loading = ref(false)
 const selectedYear = ref(dayjs().format('YYYY'))
 const selectedMonth = ref(dayjs().month() + 1)
 const activeAnalysisTab = ref('bill')
+const touchStartX = ref(0)
 const stats = ref(emptyStats())
 const categoryColorMap = ref(categoryColorMapFrom())
+const analysisTabOrder = ['bill', 'trend', 'balance', 'totalBalance', 'daily', 'category']
+const annualBalance = computed(() => {
+  return yearlyBalanceRows.value.reduce((total, item) => {
+    if (!item.hasExpense) return total
+    return total + Number(item.balance || 0)
+  }, 0)
+})
+const annualSalaryIncome = computed(() => {
+  return yearlyBalanceRows.value.reduce((total, item) => {
+    if (!item.hasExpense) return total
+    return total + Number(item.salary_income || 0)
+  }, 0)
+})
+const annualExtraIncome = computed(() => {
+  return stats.value.monthly_trend.reduce((total, item) => total + Number(item.extra_income || 0), 0)
+})
 
-const annualBillRows = computed(() =>
-  stats.value.monthly_trend
-    .filter((item) => !isFutureMonth(item.month))
+const categoryStructureRows = computed(() => {
+  const total = Number(stats.value.month_total || 0)
+  return stats.value.category_summary.map((item) => {
+    const value = Number(item.total || 0)
+    return {
+      ...item,
+      color: categoryColorMap.value[item.category] || '#64748b',
+      percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0
+    }
+  })
+})
+
+const annualBillRows = computed(() => {
+  const maxMonth = selectedYear.value === dayjs().format('YYYY') ? dayjs().month() + 1 : 12
+  return stats.value.monthly_trend
+    .filter((item) => item.month <= maxMonth)
     .map((item) => {
-      const expense = Number(item.total || 0)
-      const hasExpense = expense > 0
-      const income = hasExpense ? Number(item.total_income || 0) : 0
+      const hasExpense = Number(item.total || 0) > 0
+      const salaryIncome = hasExpense ? Number(item.salary_income || 0) : 0
+      const extraIncome = Number(item.extra_income || 0)
+      const income = Number((salaryIncome + extraIncome).toFixed(2))
+      const expense = hasExpense ? Number(item.total || 0) : 0
       return {
         month: item.month,
-        monthLabel: `${String(item.month).padStart(2, '0')}月`,
         income,
         expense,
-        balance: hasExpense ? Number((income - expense).toFixed(2)) : 0
+        balance: Number((income - expense).toFixed(2))
       }
     })
     .reverse()
-)
+})
 
-const annualBillSummary = computed(() =>
-  annualBillRows.value.reduce(
-    (summary, item) => {
-      summary.income += item.income
-      summary.expense += item.expense
-      summary.balance += item.balance
+const annualBillSummary = computed(() => {
+  return annualBillRows.value.reduce(
+    (summary, row) => {
+      summary.income += Number(row.income || 0)
+      summary.expense += Number(row.expense || 0)
+      summary.balance += Number(row.balance || 0)
       return summary
     },
     { income: 0, expense: 0, balance: 0 }
   )
-)
-
-const categoryRows = computed(() => {
-  const total = stats.value.month_total || 0
-  return stats.value.category_summary.map((item) => ({
-    ...item,
-    ratio: total ? (item.total / total) * 100 : 0
-  }))
 })
 
 const dailyRows = computed(() =>
@@ -182,9 +216,9 @@ const yearlyBalanceRows = computed(() => {
   let cumulative = 0
   return stats.value.monthly_trend.map((item) => {
     const isFuture = isFutureMonth(item.month)
-    const hasExpense = Number(item.total || 0) > 0
-    const balance = hasExpense ? Number(item.balance || 0) : 0
-    if (isFuture) {
+    const hasExpense = hasAnalyzedExpense(item)
+    const balance = Number(item.balance || 0)
+    if (isFuture || !hasExpense) {
       return {
         ...item,
         isFuture,
@@ -194,7 +228,9 @@ const yearlyBalanceRows = computed(() => {
       }
     }
 
-    cumulative += balance
+    if (hasExpense) {
+      cumulative += balance
+    }
 
     return {
       ...item,
@@ -217,6 +253,10 @@ function isFutureDay(day) {
   return date.isAfter(dayjs(), 'day')
 }
 
+function hasAnalyzedExpense(item) {
+  return Boolean(item.has_expense) || Number(item.total || 0) > 0
+}
+
 function isVisibleChartValue(value) {
   return value !== null && value !== undefined && value !== ''
 }
@@ -228,16 +268,38 @@ function chartAxisLabel(value) {
   return String(Math.round(number))
 }
 
-function billTableAmount(value) {
+function chartPointLabel(value) {
+  if (!isVisibleChartValue(value)) return ''
   const number = Number(value || 0)
-  if (Math.abs(number) < 0.005) return '0'
-  return number.toFixed(2).replace(/\.?0+$/, '')
+  if (Math.abs(number) < 0.005) return ''
+  if (Math.abs(number) >= 10000) return `${Number((number / 10000).toFixed(1))}万`
+  if (Math.abs(number) >= 1000) return `${Number((number / 1000).toFixed(1))}k`
+  return Number(number.toFixed(0)).toString()
 }
 
-function billSummaryAmount(value) {
+function formatPlainAmount(value) {
   const number = Number(value || 0)
-  if (Math.abs(number) < 0.005) return '0.00'
-  return number.toFixed(2)
+  if (!number) return '0'
+  return Number(number.toFixed(2)).toString()
+}
+
+function switchAnalysisTab(direction) {
+  const currentIndex = analysisTabOrder.indexOf(activeAnalysisTab.value)
+  if (currentIndex < 0) return
+  const nextIndex = currentIndex + direction
+  if (nextIndex < 0 || nextIndex >= analysisTabOrder.length) return
+  activeAnalysisTab.value = analysisTabOrder[nextIndex]
+}
+
+function handleAnalysisTouchStart(event) {
+  touchStartX.value = event.changedTouches?.[0]?.clientX || 0
+}
+
+function handleAnalysisTouchEnd(event) {
+  const endX = event.changedTouches?.[0]?.clientX || 0
+  const distance = endX - touchStartX.value
+  if (Math.abs(distance) < 48) return
+  switchAnalysisTab(distance < 0 ? 1 : -1)
 }
 
 const barOption = computed(() => ({
@@ -253,6 +315,7 @@ const barOption = computed(() => ({
       const item = stats.value.monthly_trend[params[0]?.dataIndex]
       if (!item) return ''
       if (isFutureMonth(item.month)) return `${item.month}月`
+      if (!hasAnalyzedExpense(item)) return `${item.month}月<br/>暂无支出记录`
       return `${item.month}月<br/>支出：${currency(item.total)}<br/>工资：${currency(item.salary_income)}<br/>额外收入：${currency(item.extra_income)}<br/>总收入：${currency(item.total_income)}`
     }
   },
@@ -273,9 +336,16 @@ const barOption = computed(() => ({
       name: '支出',
       type: 'bar',
       barMaxWidth: 34,
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 10,
+        color: '#475569',
+        formatter: (params) => chartPointLabel(params.value)
+      },
       data: stats.value.monthly_trend.map((item) => ({
-        value: isFutureMonth(item.month) ? null : item.total,
-        itemStyle: { color: !isFutureMonth(item.month) && item.is_over_salary ? '#dc2626' : '#2563eb' }
+        value: isFutureMonth(item.month) || !hasAnalyzedExpense(item) ? null : item.total,
+        itemStyle: { color: !isFutureMonth(item.month) && hasAnalyzedExpense(item) && item.is_over_salary ? '#dc2626' : '#2563eb' }
       }))
     },
     {
@@ -285,7 +355,7 @@ const barOption = computed(() => ({
       showSymbol: false,
       lineStyle: { width: 2, color: '#0f766e' },
       itemStyle: { color: '#0f766e' },
-      data: stats.value.monthly_trend.map((item) => (isFutureMonth(item.month) ? null : item.salary_income))
+      data: stats.value.monthly_trend.map((item) => (isFutureMonth(item.month) || !hasAnalyzedExpense(item) ? null : item.salary_income))
     }
   ]
 }))
@@ -304,6 +374,7 @@ const annualBalanceOption = computed(() => ({
       const item = yearlyBalanceRows.value[params[0]?.dataIndex]
       if (!item) return ''
       if (item.isFuture) return `${item.month}月`
+      if (!item.hasExpense) return `${item.month}月<br/>暂无支出记录`
       return [
         `${item.month}月`,
         `总收入：${currency(item.total_income)}`,
@@ -330,8 +401,15 @@ const annualBalanceOption = computed(() => ({
       name: '当月剩余',
       type: 'bar',
       barMaxWidth: 34,
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 10,
+        color: '#475569',
+        formatter: (params) => chartPointLabel(params.value)
+      },
       data: yearlyBalanceRows.value.map((item) => ({
-        value: item.balance,
+        value: item.hasExpense ? item.balance : null,
         itemStyle: { color: isVisibleChartValue(item.balance) && item.balance < 0 ? '#dc2626' : '#0f766e' }
       }))
     },
@@ -344,7 +422,70 @@ const annualBalanceOption = computed(() => ({
       itemStyle: { color: '#2563eb' },
       data: yearlyBalanceRows.value.map((item) => item.cumulative)
     }
-  ]
+  ],
+  graphic: yearlyBalanceRows.value.some((item) => item.hasExpense && isVisibleChartValue(item.balance))
+    ? []
+    : [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无支出记录', fill: '#94a3b8' } }]
+}))
+
+const totalBalanceOption = computed(() => ({
+  color: ['#2563eb'],
+  title: {
+    text: `${selectedYear.value} 余额分析`,
+    left: 8,
+    top: 0,
+    textStyle: { fontSize: 13, fontWeight: 700 }
+  },
+  tooltip: {
+    trigger: 'axis',
+    formatter: (params) => {
+      const item = stats.value.monthly_trend[params[0]?.dataIndex]
+      if (!item) return ''
+      if (isFutureMonth(item.month)) return `${item.month}月`
+      if (!isVisibleChartValue(item.total_balance)) return `${item.month}月<br/>暂无余额变化`
+      return [
+        `${item.month}月`,
+        `余额：${currency(item.total_balance)}`,
+        `收入：${currency(item.total_income)}`,
+        `支出：${currency(item.total)}`
+      ].join('<br/>')
+    }
+  },
+  legend: { show: false },
+  grid: { left: 42, right: 10, top: 46, bottom: 30 },
+  xAxis: {
+    type: 'category',
+    data: stats.value.monthly_trend.map((item) => `${item.month}月`),
+    axisLabel: { fontSize: 11 }
+  },
+  yAxis: {
+    type: 'value',
+    splitNumber: 4,
+    axisLabel: { formatter: chartAxisLabel, fontSize: 11 }
+  },
+  series: [
+    {
+      name: '余额',
+      type: 'line',
+      smooth: true,
+      connectNulls: false,
+      symbolSize: 7,
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 10,
+        color: '#2563eb',
+        formatter: (params) => chartPointLabel(params.value)
+      },
+      lineStyle: { width: 3, color: '#2563eb' },
+      itemStyle: { color: '#2563eb' },
+      areaStyle: { opacity: 0.08 },
+      data: stats.value.monthly_trend.map((item) => (isFutureMonth(item.month) ? null : item.total_balance))
+    }
+  ],
+  graphic: stats.value.monthly_trend.some((item) => !isFutureMonth(item.month) && isVisibleChartValue(item.total_balance))
+    ? []
+    : [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无余额变化', fill: '#94a3b8' } }]
 }))
 
 const dailyOption = computed(() => ({
@@ -386,6 +527,13 @@ const dailyOption = computed(() => ({
       name: '每日花费',
       type: 'bar',
       barMaxWidth: 18,
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 9,
+        color: '#475569',
+        formatter: (params) => chartPointLabel(params.value)
+      },
       data: dailyRows.value.map((item) => item.total)
     },
     {
@@ -420,8 +568,8 @@ const pieOption = computed(() => ({
   series: [
     {
       type: 'pie',
-      radius: ['42%', '68%'],
-      center: ['50%', '50%'],
+      radius: ['40%', '64%'],
+      center: ['50%', '48%'],
       label: {
         show: false
       },
@@ -461,6 +609,7 @@ function emptyStats() {
   return {
     month_total: 0,
     year_total: 0,
+    total_balance: 0,
     year_count: 0,
     month_count: 0,
     average_day: 0,
@@ -483,6 +632,8 @@ function emptyStats() {
       extra_income: 0,
       total_income: 0,
       balance: 0,
+      total_balance: null,
+      has_expense: false,
       is_over_salary: false
     })),
     daily_expenses: [],
@@ -505,7 +656,9 @@ async function loadStats() {
   }
 }
 
-watch(selectedYear, loadStats, { immediate: true })
+onMounted(loadStats)
+watch(selectedYear, loadStats)
+watch(selectedMonth, loadStats)
 
 function refreshCategoryColors() {
   categoryColorMap.value = categoryColorMapFrom()

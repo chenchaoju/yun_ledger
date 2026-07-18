@@ -1,5 +1,11 @@
 <template>
-  <el-dialog v-model="visible" :title="dialogTitle" width="min(520px, calc(100vw - 24px))" class="finance-dialog" destroy-on-close>
+  <el-dialog
+    v-model="visible"
+    :title="dialogTitle"
+    width="min(520px, calc(100vw - 24px))"
+    class="finance-dialog expense-dialog"
+    destroy-on-close
+  >
     <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
       <el-form-item v-if="isAmountStep" prop="amount" class="amount-form-item">
         <div class="amount-keypad">
@@ -43,7 +49,13 @@
           </div>
         </el-form-item>
         <el-form-item label="日期" prop="spent_at">
-          <el-date-picker v-model="form.spent_at" type="date" value-format="YYYY-MM-DD" class="full-width" />
+          <el-date-picker
+            v-model="form.spent_at"
+            type="date"
+            value-format="YYYY-MM-DD"
+            :editable="false"
+            class="full-width"
+          />
         </el-form-item>
         <el-form-item label="备注" prop="note">
           <el-input v-model="form.note" maxlength="255" show-word-limit placeholder="可选，例如：午餐、停车费" />
@@ -60,7 +72,7 @@
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { allExpenseCategories, categoryChangedEvent } from '../constants/categories'
 import { categoryIconComponent } from '../constants/categoryIcons'
@@ -218,8 +230,20 @@ watch(() => props.modelValue, (value) => {
 })
 
 window.addEventListener(categoryChangedEvent, refreshCategories)
+onMounted(() => {
+  updateViewportHeight()
+  window.visualViewport?.addEventListener('resize', updateViewportHeight)
+  window.visualViewport?.addEventListener('scroll', updateViewportHeight)
+})
 
 onBeforeUnmount(() => {
   window.removeEventListener(categoryChangedEvent, refreshCategories)
+  window.visualViewport?.removeEventListener('resize', updateViewportHeight)
+  window.visualViewport?.removeEventListener('scroll', updateViewportHeight)
 })
+
+function updateViewportHeight() {
+  const height = window.visualViewport?.height || window.innerHeight
+  document.documentElement.style.setProperty('--app-visual-height', `${height}px`)
+}
 </script>

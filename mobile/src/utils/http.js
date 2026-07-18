@@ -1,6 +1,9 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+const autoLoginPausedKey = 'finance_mobile_auto_login_paused'
+const skipAutoLoginKey = 'skip_auto_login_once'
+
 function trimTrailingSlash(value) {
   return String(value || '').replace(/\/+$/, '')
 }
@@ -8,6 +11,10 @@ function trimTrailingSlash(value) {
 function resolveApiBaseURL() {
   const configured = import.meta.env.VITE_API_BASE_URL
   if (configured) return trimTrailingSlash(configured)
+
+  if (import.meta.env.PROD) {
+    return '/mobile-api/api'
+  }
 
   return '/api'
 }
@@ -34,11 +41,17 @@ http.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const detail = error.response?.data?.detail
-    const message = Array.isArray(detail) ? '请求参数有误' : detail || '请求失败'
+    const message = error.response
+      ? Array.isArray(detail)
+        ? '请求参数有误'
+        : detail || '请求失败'
+      : '网络请求失败，请检查网络后重试'
 
     const targetLoginPath = loginPath()
 
     if (status === 401 && window.location.pathname !== targetLoginPath) {
+      sessionStorage.setItem(skipAutoLoginKey, '1')
+      localStorage.setItem(autoLoginPausedKey, '1')
       localStorage.removeItem('access_token')
       localStorage.removeItem('current_user')
       window.location.href = targetLoginPath

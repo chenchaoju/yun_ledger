@@ -30,6 +30,8 @@ class TrendPoint(BaseModel):
     extra_income: float = 0
     total_income: float = 0
     balance: float = 0
+    total_balance: float | None = None
+    has_expense: bool = False
     is_over_salary: bool = False
 
 
@@ -53,6 +55,7 @@ class MonthlyIncomeSummary(BaseModel):
 class OverviewStats(BaseModel):
     month_total: float
     year_total: float
+    total_balance: float = 0
     year_count: int = 0
     month_count: int
     average_day: float

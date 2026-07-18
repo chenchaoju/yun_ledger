@@ -33,9 +33,21 @@
     </div>
 
     <div class="content-grid">
-      <el-card shadow="never" class="chart-card">
+      <el-card shadow="never" class="chart-card category-chart-card">
         <template #header>本月分类结构</template>
         <BaseChart :option="categoryOption" :loading="loading" />
+        <div v-if="categoryRows.length" class="category-structure-list">
+          <div
+            v-for="row in categoryRows"
+            :key="row.category"
+            class="category-structure-item"
+            :style="{ '--category-color': categoryColorMap[row.category] || '#64748b' }"
+          >
+            <span><i></i><b>{{ row.category }}</b></span>
+            <strong>{{ currency(row.total) }}</strong>
+            <em>{{ percent(row.ratio) }}</em>
+          </div>
+        </div>
       </el-card>
       <el-card shadow="never" class="chart-card">
         <template #header>{{ selectedYear }} 年趋势</template>
@@ -92,7 +104,7 @@ import DataTransferButton from '../components/DataTransferButton.vue'
 import ExpenseFormDialog from '../components/ExpenseFormDialog.vue'
 import IncomeFormDialog from '../components/IncomeFormDialog.vue'
 import { categoryColorMap } from '../constants/categories'
-import { currency } from '../utils/format'
+import { currency, percent } from '../utils/format'
 import http from '../utils/http'
 
 const loading = ref(false)
@@ -141,6 +153,14 @@ const metrics = computed(() => [
   { label: '日均支出', value: currency(stats.value.average_day), icon: Calendar, tone: 'tone-teal' }
 ])
 
+const categoryRows = computed(() => {
+  const total = stats.value.month_total || 0
+  return stats.value.category_summary.map((item) => ({
+    ...item,
+    ratio: total ? (item.total / total) * 100 : 0
+  }))
+})
+
 const categoryOption = computed(() => ({
   color: stats.value.category_summary.map((item) => categoryColorMap[item.category] || '#64748b'),
   tooltip: {
@@ -157,10 +177,9 @@ const categoryOption = computed(() => ({
       center: ['50%', '50%'],
       avoidLabelOverlap: true,
       label: {
-        formatter: (params) => `${params.name}\n${currency(params.value)}`,
-        fontSize: 12
+        show: false
       },
-      labelLine: { length: 14, length2: 18 },
+      labelLine: { show: false },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap[item.category] || '#64748b'
         return {

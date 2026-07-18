@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db
 from app.models.expense import Expense
 from app.models.monthly_income import MonthlyIncome
+from app.models.recurring_expense import RecurringExpense
 from app.models.user import User
 from app.schemas.expense import ExpenseBase
 from app.schemas.income import ExtraIncomeItem
+from app.schemas.recurring_expense import RecurringExpenseBase
 from app.services.income_items import extra_income_total, normalize_extra_income_items
 
 router = APIRouter(prefix="/data", tags=["data"])
@@ -31,16 +33,22 @@ class DataTransferMonthlyIncome(BaseModel):
     extra_income_items: list[ExtraIncomeItem] = Field(default_factory=list)
 
 
+class DataTransferRecurringExpense(RecurringExpenseBase):
+    pass
+
+
 class DataTransferPayload(BaseModel):
     version: int = 1
     exported_at: datetime | None = None
     expenses: list[DataTransferExpense] = Field(default_factory=list)
     monthly_incomes: list[DataTransferMonthlyIncome] = Field(default_factory=list)
+    recurring_expenses: list[DataTransferRecurringExpense] = Field(default_factory=list)
 
 
 class DataImportResult(BaseModel):
     expenses: int
     monthly_incomes: int
+    recurring_expenses: int
 
 
 @router.get("/export", response_model=DataTransferPayload)
@@ -57,6 +65,11 @@ def export_data(
         select(MonthlyIncome)
         .where(MonthlyIncome.user_id == current_user.id)
         .order_by(MonthlyIncome.year.asc(), MonthlyIncome.month.asc())
+    ).all()
+    recurring_expenses = db.scalars(
+        select(RecurringExpense)
+        .where(RecurringExpense.user_id == current_user.id)
+        .order_by(RecurringExpense.enabled.desc(), RecurringExpense.id.asc())
     ).all()
 
     return DataTransferPayload(
@@ -81,6 +94,19 @@ def export_data(
             )
             for income in monthly_incomes
         ],
+        recurring_expenses=[
+            DataTransferRecurringExpense(
+                name=item.name,
+                amount=item.amount,
+                category=item.category,
+                frequency=item.frequency,
+                day_of_month=item.day_of_month,
+                month_of_year=item.month_of_year,
+                start_date=item.start_date,
+                enabled=item.enabled,
+            )
+            for item in recurring_expenses
+        ],
     )
 
 
@@ -101,6 +127,7 @@ def import_data(
     try:
         db.execute(delete(Expense).where(Expense.user_id == current_user.id))
         db.execute(delete(MonthlyIncome).where(MonthlyIncome.user_id == current_user.id))
+        db.execute(delete(RecurringExpense).where(RecurringExpense.user_id == current_user.id))
 
         for expense in payload.expenses:
             db.add(Expense(user_id=current_user.id, **expense.model_dump()))
@@ -118,9 +145,16 @@ def import_data(
                 )
             )
 
+        for item in payload.recurring_expenses:
+            db.add(RecurringExpense(user_id=current_user.id, **item.model_dump()))
+
         db.commit()
     except Exception:
         db.rollback()
         raise
 
-    return DataImportResult(expenses=len(payload.expenses), monthly_incomes=len(monthly_income_by_period))
+    return DataImportResult(
+        expenses=len(payload.expenses),
+        monthly_incomes=len(monthly_income_by_period),
+        recurring_expenses=len(payload.recurring_expenses),
+    )

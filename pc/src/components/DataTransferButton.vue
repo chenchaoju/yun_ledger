@@ -68,7 +68,7 @@ function openImportPicker() {
 
 async function importData(file) {
   const confirmed = await ElMessageBox.confirm(
-    '导入会覆盖当前账号已有的支出和收入数据，确认继续？',
+    '导入会覆盖当前账号已有的支出、收入和固定支出设置，确认继续？',
     '确认导入',
     { type: 'warning' }
   ).catch(() => false)
@@ -86,7 +86,9 @@ async function importData(file) {
   working.value = true
   try {
     const { data } = await http.post('/data/import', payload, { timeout: 30000 })
-    ElMessage.success(`导入完成：${data.expenses} 条支出，${data.monthly_incomes} 条收入`)
+    ElMessage.success(
+      `导入完成：${data.expenses} 条支出，${data.monthly_incomes} 条收入，${data.recurring_expenses || 0} 个固定支出`
+    )
     notifyFinanceDataChanged()
     emit('imported', inferImportedPeriod(payload))
   } finally {

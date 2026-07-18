@@ -41,52 +41,17 @@ async function exportData() {
       responseType: 'blob',
       timeout: 30000
     })
-    const filename = `yun-accounting-${dayjs().format('YYYYMMDD-HHmmss')}.json`
-    const saveResult = await saveWithPicker(data, filename)
-    if (saveResult === 'cancelled') return
-    if (!saveResult) {
-      downloadBlob(data, filename)
-    }
-    ElMessage.success(saveResult ? '数据已导出' : `数据已导出：${filename}`)
-  } finally {
-    working.value = false
-  }
-}
-
-async function saveWithPicker(blob, filename) {
-  if (!window.showSaveFilePicker) return false
-
-  try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: filename,
-      types: [
-        {
-          description: 'JSON 数据文件',
-          accept: { 'application/json': ['.json'] }
-        }
-      ]
-    })
-    const writable = await handle.createWritable()
-    await writable.write(blob)
-    await writable.close()
-    return 'saved'
-  } catch (error) {
-    if (error?.name === 'AbortError') return 'cancelled'
-    throw error
-  }
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob)
-  try {
+    const url = URL.createObjectURL(data)
     const link = document.createElement('a')
     link.href = url
-    link.download = filename
+    link.download = `finance-data-${dayjs().format('YYYYMMDD-HHmmss')}.json`
     document.body.appendChild(link)
     link.click()
     link.remove()
-  } finally {
     URL.revokeObjectURL(url)
+    ElMessage.success('数据已导出')
+  } finally {
+    working.value = false
   }
 }
 
@@ -96,9 +61,13 @@ function openImportPicker() {
 
 async function importData(file) {
   const confirmed = await ElMessageBox.confirm(
-    '导入会覆盖当前账号已有的支出和收入数据，确认继续？',
+    '导入会覆盖当前账号已有的支出、收入和固定支出设置，确认继续？',
     '确认导入',
-    { type: 'warning' }
+    {
+      type: 'warning',
+      confirmButtonText: '继续导入',
+      cancelButtonText: '取消'
+    }
   ).catch(() => false)
 
   if (!confirmed) return
@@ -114,7 +83,9 @@ async function importData(file) {
   working.value = true
   try {
     const { data } = await http.post('/data/import', payload, { timeout: 30000 })
-    ElMessage.success(`导入完成：${data.expenses} 条支出，${data.monthly_incomes} 条收入`)
+    ElMessage.success(
+      `导入完成：${data.expenses} 条支出，${data.monthly_incomes} 条收入，${data.recurring_expenses || 0} 个固定支出`
+    )
     notifyFinanceDataChanged()
     emit('imported', inferImportedPeriod(payload))
   } finally {

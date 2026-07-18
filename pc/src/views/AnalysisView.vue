@@ -71,8 +71,20 @@
       </el-tab-pane>
       <el-tab-pane label="月度结构" name="category">
         <div class="content-grid">
-          <el-card shadow="never" class="chart-card">
+          <el-card shadow="never" class="chart-card category-chart-card">
             <BaseChart :option="pieOption" :loading="loading" />
+            <div v-if="categoryRows.length" class="category-structure-list">
+              <div
+                v-for="row in categoryRows"
+                :key="row.category"
+                class="category-structure-item"
+                :style="{ '--category-color': categoryColorMap[row.category] || '#64748b' }"
+              >
+                <span><i></i><b>{{ row.category }}</b></span>
+                <strong>{{ currency(row.total) }}</strong>
+                <em>{{ percent(row.ratio) }}</em>
+              </div>
+            </div>
           </el-card>
           <el-card shadow="never">
             <el-table :data="categoryRows" empty-text="暂无数据">
@@ -353,10 +365,9 @@ const pieOption = computed(() => ({
       radius: ['42%', '68%'],
       center: ['50%', '50%'],
       label: {
-        formatter: (params) => `${params.name}\n${currency(params.value)}`,
-        fontSize: 12
+        show: false
       },
-      labelLine: { length: 14, length2: 18 },
+      labelLine: { show: false },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap[item.category] || '#64748b'
         return {

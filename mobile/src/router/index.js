@@ -1,11 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import { useAuthStore } from '../stores/auth'
-import AnalysisView from '../views/AnalysisView.vue'
-import DashboardView from '../views/DashboardView.vue'
-import LoginView from '../views/LoginView.vue'
-import RecordsView from '../views/RecordsView.vue'
-import SettingsView from '../views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,7 +8,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: () => import('../views/LoginView.vue'),
       meta: { title: '登录' }
     },
     {
@@ -24,30 +19,55 @@ const router = createRouter({
         {
           path: '',
           name: 'dashboard',
-          component: DashboardView,
+          component: () => import('../views/DashboardView.vue'),
           meta: { title: '今日概览' }
         },
         {
           path: 'records',
           name: 'records',
-          component: RecordsView,
-          meta: { title: '记账明细' }
+          component: () => import('../views/RecordsView.vue'),
+          meta: { title: '明细' }
         },
         {
           path: 'analysis',
           name: 'analysis',
-          component: AnalysisView,
+          component: () => import('../views/AnalysisView.vue'),
           meta: { title: '收支分析' }
         },
         {
           path: 'settings',
           name: 'settings',
-          component: SettingsView,
+          component: () => import('../views/SettingsView.vue'),
           meta: { title: '个人设置' }
         }
       ]
     }
   ]
+})
+
+const chunkReloadKey = 'finance_mobile_chunk_reload'
+
+router.onError((error) => {
+  const message = String(error?.message || '')
+  const isChunkLoadError =
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('Importing a module script failed') ||
+    message.includes('Loading chunk') ||
+    message.includes('dynamically imported module')
+
+  if (!isChunkLoadError) return
+
+  if (sessionStorage.getItem(chunkReloadKey) === '1') {
+    sessionStorage.removeItem(chunkReloadKey)
+    return
+  }
+
+  sessionStorage.setItem(chunkReloadKey, '1')
+  window.location.reload()
+})
+
+router.afterEach(() => {
+  sessionStorage.removeItem(chunkReloadKey)
 })
 
 router.beforeEach((to) => {

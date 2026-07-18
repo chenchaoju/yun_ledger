@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import http from '../utils/http'
-import { disableAutoLoginForSession } from '../utils/authPreferences'
+
+const autoLoginPausedKey = 'finance_mobile_auto_login_paused'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -36,9 +37,10 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('current_user', JSON.stringify(data))
     },
     logout() {
-      disableAutoLoginForSession()
       this.token = ''
       this.user = null
+      sessionStorage.setItem('skip_auto_login_once', '1')
+      localStorage.setItem(autoLoginPausedKey, '1')
       localStorage.removeItem('access_token')
       localStorage.removeItem('current_user')
     }
