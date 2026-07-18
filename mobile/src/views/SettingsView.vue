@@ -194,7 +194,13 @@
         </div>
 
         <div class="category-toggle-list">
-          <div v-for="item in allManagedCategories" :key="item.value" class="category-toggle-row">
+          <div
+            v-for="item in allManagedCategories"
+            :key="item.value"
+            class="category-toggle-row"
+            :class="{ dragging: draggedCategoryValue === item.value }"
+            :data-category-value="item.value"
+          >
             <span class="category-toggle-name">
               <i :style="{ color: item.color }">
                 <el-icon><component :is="categoryIconComponent(item.icon)" /></el-icon>
@@ -203,6 +209,14 @@
               <em v-if="item.custom">自定义</em>
             </span>
             <span class="category-toggle-actions">
+              <button
+                type="button"
+                class="category-drag-handle"
+                aria-label="拖动调整顺序"
+                @pointerdown="startCategoryDrag(item.value, $event)"
+              >
+                <el-icon><Sort /></el-icon>
+              </button>
               <el-switch :model-value="!isCategoryHidden(item.value)" @change="toggleCategory(item.value)" />
               <button
                 v-if="item.custom"
@@ -259,15 +273,19 @@
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, h, onMounted, reactive, ref, watch } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Sort } from '@element-plus/icons-vue'
 import DataTransferButton from '../components/DataTransferButton.vue'
 import {
+  allExpenseCategories,
   buildCustomCategory,
   expenseCategories,
+  loadCategoryOrder,
   loadCustomCategories,
   loadHiddenCategoryValues,
+  saveCategoryOrder,
   saveCustomCategories,
   saveHiddenCategoryValues
 } from '../constants/categories'
@@ -291,6 +309,8 @@ const newCategoryName = ref('')
 const newCategoryIcon = ref('MoreFilled')
 const customCategories = ref(loadCustomCategories())
 const hiddenCategoryValues = ref(loadHiddenCategoryValues())
+const categoryOrder = ref(loadCategoryOrder())
+const draggedCategoryValue = ref('')
 const avatarPreference = ref(loadAvatarPreference())
 const profileForm = reactive({
   username: ''
@@ -350,7 +370,12 @@ const openingBalanceLabel = computed(() => {
 const presetSummaryLabel = computed(() => {
   return `工资 ${defaultSalaryLabel.value} · 余额 ${openingBalanceLabel.value}`
 })
-const allManagedCategories = computed(() => [...expenseCategories, ...customCategories.value])
+const allManagedCategories = computed(() => {
+  categoryOrder.value
+  customCategories.value
+  hiddenCategoryValues.value
+  return allExpenseCategories({ includeHidden: true })
+})
 const recurringSummary = computed(() => {
   const enabledCount = recurringExpenses.value.filter((item) => item.enabled).length
   return enabledCount ? `${enabledCount} 个已开启` : '未设置'
@@ -523,6 +548,8 @@ function addCategory() {
   }
   customCategories.value = [...customCategories.value, buildCustomCategory(name, customCategories.value.length, newCategoryIcon.value)]
   saveCustomCategories(customCategories.value)
+  categoryOrder.value = [...allManagedCategories.value.map((item) => item.value), name]
+  saveCategoryOrder(categoryOrder.value)
   newCategoryName.value = ''
   newCategoryIcon.value = 'MoreFilled'
   ElMessage.success('分类已添加')
@@ -542,8 +569,46 @@ async function removeCategory(value) {
   if (!confirmed) return
   customCategories.value = customCategories.value.filter((item) => item.value !== value)
   saveCustomCategories(customCategories.value)
+  categoryOrder.value = categoryOrder.value.filter((item) => item !== value)
+  saveCategoryOrder(categoryOrder.value)
   hiddenCategoryValues.value = hiddenCategoryValues.value.filter((item) => item !== value)
   saveHiddenCategoryValues(hiddenCategoryValues.value)
+}
+
+function reorderCategories(fromValue, toValue) {
+  const values = allManagedCategories.value.map((item) => item.value)
+  const index = values.indexOf(fromValue)
+  const targetIndex = values.indexOf(toValue)
+  if (index < 0 || targetIndex < 0 || index === targetIndex) return
+  const next = [...values]
+  const [item] = next.splice(index, 1)
+  next.splice(targetIndex, 0, item)
+  categoryOrder.value = next
+  saveCategoryOrder(next)
+}
+
+function startCategoryDrag(value, event) {
+  if (event.target?.closest?.('.category-toggle-actions') && !event.target?.closest?.('.category-drag-handle')) return
+  draggedCategoryValue.value = value
+  event.preventDefault()
+  event.currentTarget?.setPointerCapture?.(event.pointerId)
+  window.addEventListener('pointermove', moveCategoryDrag)
+  window.addEventListener('pointerup', stopCategoryDrag, { once: true })
+  window.addEventListener('pointercancel', stopCategoryDrag, { once: true })
+}
+
+function moveCategoryDrag(event) {
+  if (!draggedCategoryValue.value) return
+  event.preventDefault()
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-category-value]')
+  const targetValue = target?.dataset?.categoryValue
+  if (!targetValue || targetValue === draggedCategoryValue.value) return
+  reorderCategories(draggedCategoryValue.value, targetValue)
+}
+
+function stopCategoryDrag() {
+  window.removeEventListener('pointermove', moveCategoryDrag)
+  draggedCategoryValue.value = ''
 }
 
 function isCategoryHidden(value) {
@@ -716,4 +781,10 @@ async function deleteAccount() {
 }
 
 onMounted(loadRecurringExpenses)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', moveCategoryDrag)
+  window.removeEventListener('pointerup', stopCategoryDrag)
+  window.removeEventListener('pointercancel', stopCategoryDrag)
+})
 </script>

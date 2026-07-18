@@ -80,7 +80,7 @@ textarea {
 }
 
 .sidebar-menu .el-menu-item {
-  border-radius: 8px;
+  border-radius: 50%;
   color: #d8dee8;
   margin-bottom: 6px;
 }
@@ -186,7 +186,7 @@ textarea {
 }
 
 .record-amount-expense {
-  color: #1f2937;
+  color: #dc2626;
   font-weight: 800;
 }
 
@@ -714,6 +714,13 @@ textarea {
   min-height: 46px;
   padding: 8px 12px;
   border-bottom: 1px solid #eef2f7;
+  transition: background 0.16s ease, opacity 0.16s ease;
+  user-select: none;
+}
+
+.category-toggle-row.dragging {
+  background: #eff6ff;
+  opacity: 0.82;
 }
 
 .category-toggle-row:last-child {
@@ -727,11 +734,31 @@ textarea {
 }
 
 .category-toggle-name {
+  flex: 1 1 auto;
   min-width: 0;
   gap: 8px;
   color: var(--text);
   font-size: 14px;
   font-weight: 700;
+}
+
+.category-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  cursor: grab;
+  font-size: 17px;
+  touch-action: none;
+}
+
+.category-drag-handle:active {
+  cursor: grabbing;
+  color: #2563eb;
 }
 
 .category-toggle-name i {
@@ -763,7 +790,8 @@ textarea {
 
 .category-toggle-actions {
   flex: 0 0 auto;
-  gap: 8px;
+  cursor: default;
+  gap: 6px;
 }
 
 .category-remove-button {
@@ -1142,6 +1170,47 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   margin: -4px 0 14px;
+}
+
+.auth-options,
+.auth-options .el-checkbox,
+.auth-options .el-checkbox__input,
+.auth-options .el-checkbox__inner,
+.auth-options .el-checkbox__label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-options .el-checkbox {
+  height: 28px;
+  margin-right: 0;
+  line-height: 28px;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.auth-options .el-checkbox__input,
+.auth-options .el-checkbox__inner,
+.auth-options .el-checkbox__inner::after,
+.auth-options .el-checkbox__label {
+  transition: none !important;
+}
+
+.auth-options .el-checkbox__inner {
+  box-shadow: none !important;
+}
+
+.auth-options .el-checkbox__input.is-focus .el-checkbox__inner,
+.auth-options .el-checkbox__input .el-checkbox__inner:hover {
+  border-color: var(--blue);
+}
+
+.auth-options .el-checkbox__input.is-checked .el-checkbox__inner {
+  border-color: var(--blue);
+  background-color: var(--blue);
+}
+
+.auth-options .el-checkbox__input.is-checked + .el-checkbox__label {
+  color: var(--text);
 }
 
 .saved-user-list {
@@ -1688,6 +1757,14 @@ textarea {
     color: #101828;
     font-size: 15px;
     line-height: 1.2;
+  }
+
+  .mobile-record-amount strong.record-amount-income {
+    color: #15803d;
+  }
+
+  .mobile-record-amount strong.record-amount-expense {
+    color: #dc2626;
   }
 
   .mobile-record-amount span {

@@ -3,11 +3,11 @@
     <span>数据管理</span>
     <span class="data-transfer-actions">
       <button type="button" :disabled="working" @click="openImportPicker">
-        <el-icon><Upload /></el-icon>
+        <el-icon><Download /></el-icon>
         <span>导入</span>
       </button>
       <button type="button" :disabled="working" @click="exportData">
-        <el-icon><Download /></el-icon>
+        <el-icon><Upload /></el-icon>
         <span>导出</span>
       </button>
     </span>

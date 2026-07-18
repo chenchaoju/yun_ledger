@@ -138,7 +138,18 @@ def list_records(
 
     recurring_items = list(db.scalars(select(RecurringExpense).where(RecurringExpense.user_id == current_user.id)).all())
     recurring_occurrences = recurring_occurrences_between(recurring_items, range_start, range_end) if range_start <= today else []
+    active_months: set[tuple[int, int]] = {
+        (expense.spent_at.year, expense.spent_at.month)
+        for expense in db.scalars(
+            select(Expense).where(
+                Expense.user_id == current_user.id,
+                Expense.spent_at >= range_start,
+                Expense.spent_at <= range_end,
+            )
+        ).all()
+    }
     for occurrence in recurring_occurrences:
+        active_months.add((occurrence.record_date.year, occurrence.record_date.month))
         if category_value and occurrence.category != category_value:
             continue
         records.append(
@@ -168,9 +179,35 @@ def list_records(
         for income in income_rows
         if month_end(income.year, income.month) >= range_start and month_start(income.year, income.month) <= range_end
     }
+    extra_income_records: list[LedgerRecord] = []
+    for (year, month), income in income_map.items():
+        items = normalize_extra_income_items(income.extra_income_items, income.extra_income)
+        for index, item in enumerate(items):
+            record_date_text = item.get("occurred_at")
+            record_date = date.fromisoformat(record_date_text) if record_date_text else month_start(year, month)
+            if record_date < range_start or record_date > range_end:
+                continue
+            active_months.add((record_date.year, record_date.month))
+            extra_income_records.append(
+                LedgerRecord(
+                    id=f"extra-income-{income.id}-{index}",
+                    record_type="extra_income",
+                    source_id=income.id,
+                    amount=to_float(item.get("amount")),
+                    category="额外收入",
+                    note=item.get("name") or "额外收入",
+                    record_date=record_date,
+                    created_at=income.created_at,
+                    updated_at=income.updated_at,
+                )
+            )
 
     if not category_value or category_value == "工资收入":
         for year, month in income_months:
+            key = (year, month)
+            is_current_month = key == (today.year, today.month)
+            if not is_current_month and key not in active_months:
+                continue
             income = income_map.get((year, month))
             salary_income = to_float(income.salary_income) if income else to_float(current_user.default_salary_income)
             if salary_income <= 0:
@@ -193,26 +230,7 @@ def list_records(
             )
 
     if not category_value or category_value == "额外收入":
-        for (year, month), income in income_map.items():
-            items = normalize_extra_income_items(income.extra_income_items, income.extra_income)
-            for index, item in enumerate(items):
-                record_date_text = item.get("occurred_at")
-                record_date = date.fromisoformat(record_date_text) if record_date_text else month_start(year, month)
-                if record_date < range_start or record_date > range_end:
-                    continue
-                records.append(
-                    LedgerRecord(
-                        id=f"extra-income-{income.id}-{index}",
-                        record_type="extra_income",
-                        source_id=income.id,
-                        amount=to_float(item.get("amount")),
-                        category="额外收入",
-                        note=item.get("name") or "额外收入",
-                        record_date=record_date,
-                        created_at=income.created_at,
-                        updated_at=income.updated_at,
-                    )
-                )
+        records.extend(extra_income_records)
 
     records.sort(
         key=lambda item: (
