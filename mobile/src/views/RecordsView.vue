@@ -14,7 +14,7 @@
     </el-card>
 
     <el-card shadow="never">
-      <el-table v-loading="loading" :data="items" empty-text="暂无明细" class="desktop-record-table">
+      <el-table v-loading="showInitialLoading" :data="items" empty-text="暂无明细" class="desktop-record-table">
         <el-table-column prop="record_date" label="日期" width="130" />
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">
@@ -37,7 +37,7 @@
         </el-table-column>
       </el-table>
 
-      <div v-loading="loading" class="mobile-record-list">
+      <div v-loading="showInitialLoading" element-loading-background="transparent" class="mobile-record-list">
         <article v-for="row in items" :key="row.id" class="mobile-record-card">
           <div class="mobile-record-main">
             <div class="mobile-record-info">
@@ -151,6 +151,7 @@ const categoryColorMap = ref({
 })
 
 const recordCategories = computed(() => [...incomeCategoryOptions, ...expenseCategories.value])
+const showInitialLoading = computed(() => loading.value && !items.value.length)
 const recordDialogTitle = computed(() => `编辑${recordTypeLabel(editingRecord.value?.record_type)}`)
 const canEditRecordCategory = computed(() => editingRecord.value?.record_type === 'recurring_expense')
 const canEditRecordNote = computed(() => ['extra_income', 'recurring_expense'].includes(editingRecord.value?.record_type))

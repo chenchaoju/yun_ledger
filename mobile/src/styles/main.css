@@ -411,6 +411,10 @@ textarea {
   display: none;
 }
 
+.mobile-record-list .el-loading-mask {
+  background: transparent !important;
+}
+
 .settings-avatar {
   display: grid;
   place-items: center;
@@ -1613,7 +1617,10 @@ textarea {
     background: #17202a;
     color: #ffffff;
     overflow-x: hidden;
-    box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.18);
+    box-shadow: 0 -1px 0 rgba(15, 23, 42, 0.18);
+    backface-visibility: hidden;
+    contain: layout paint;
+    transform: translateZ(0);
   }
 
   .brand {
@@ -1625,6 +1632,12 @@ textarea {
     width: 100%;
     justify-content: space-around;
     background: transparent;
+    --el-menu-bg-color: transparent;
+    --el-menu-hover-bg-color: transparent;
+    --el-menu-text-color: #d8dee8;
+    --el-menu-active-color: #ffffff;
+    --el-menu-hover-text-color: #d8dee8;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .sidebar-menu .el-menu-item {
@@ -1635,12 +1648,53 @@ textarea {
     padding: 0 8px;
     border-radius: 14px;
     color: #d8dee8;
+    outline: none;
+    transition: none !important;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    contain: paint;
+    transform: translateZ(0);
+    background-color: transparent !important;
+    box-shadow: none !important;
   }
 
-  .sidebar-menu .el-menu-item:hover,
+  .sidebar-menu .el-menu-item,
+  .sidebar-menu .el-menu-item * {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+    -webkit-touch-callout: none;
+  }
+
+  .sidebar-menu .el-menu-item > * {
+    pointer-events: none;
+  }
+
   .sidebar-menu .el-menu-item.is-active {
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+  }
+
+  .sidebar-menu .el-menu-item:hover:not(.is-active),
+  .sidebar-menu .el-menu-item:focus:not(.is-active),
+  .sidebar-menu .el-menu-item:focus-visible:not(.is-active),
+  .sidebar-menu .el-menu-item:active:not(.is-active) {
+    background-color: transparent !important;
+    color: #d8dee8 !important;
+    outline: none !important;
+  }
+
+  .sidebar-menu .el-menu-item.is-active:focus,
+  .sidebar-menu .el-menu-item.is-active:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    outline: none !important;
+  }
+
+  .sidebar-menu .el-menu-item::before,
+  .sidebar-menu .el-menu-item::after {
+    display: none !important;
+    content: none !important;
   }
 
   .app-main {

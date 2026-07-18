@@ -9,7 +9,7 @@
         <el-icon><Plus /></el-icon>
         <span>新增支出</span>
       </button>
-      <el-menu :default-active="route.path" router class="sidebar-menu">
+      <el-menu :default-active="route.path" class="sidebar-menu" @select="handleNavSelect">
         <el-menu-item index="/">
           <el-icon><HomeFilled /></el-icon>
           <span>概览</span>
@@ -50,14 +50,20 @@
 <script setup>
 import dayjs from 'dayjs'
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Plus, Setting, Tickets, TrendCharts, Wallet } from '@element-plus/icons-vue'
 import ExtraIncomeButton from './ExtraIncomeButton.vue'
 import ExpenseFormDialog from './ExpenseFormDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const quickDialogVisible = ref(false)
 
 const showPageHeader = computed(() => route.name === 'dashboard')
 const todayLabel = computed(() => dayjs().format('YYYY年M月D日'))
+
+function handleNavSelect(index) {
+  if (index === route.path) return
+  router.push(index)
+}
 </script>
