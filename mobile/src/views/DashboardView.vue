@@ -27,7 +27,7 @@
       </article>
     </div>
 
-    <div class="content-grid">
+    <div class="content-grid dashboard-content-grid">
       <el-card shadow="never" class="chart-card">
         <template #header>本月分类结构</template>
         <BaseChart :option="categoryOption" :loading="loading" />
@@ -40,10 +40,6 @@
             <em>{{ currency(item.total) }} · {{ item.percent }}%</em>
           </div>
         </div>
-      </el-card>
-      <el-card shadow="never" class="chart-card">
-        <template #header>{{ selectedYear }} 年趋势</template>
-        <BaseChart :option="trendOption" :loading="loading" />
       </el-card>
     </div>
 
@@ -173,15 +169,6 @@ const topCategoryLabelNames = computed(() => {
   )
 })
 
-const topCategorySummary = computed(() => {
-  const [topItem] = [...categoryStructureRows.value].sort((left, right) => Number(right.total || 0) - Number(left.total || 0))
-  if (!topItem) return null
-  return {
-    category: topItem.category,
-    percent: topItem.percent
-  }
-})
-
 const categoryOption = computed(() => ({
   color: stats.value.category_summary.map((item) => categoryColorMap.value[item.category] || '#64748b'),
   tooltip: {
@@ -194,7 +181,7 @@ const categoryOption = computed(() => ({
   series: [
     {
       type: 'pie',
-      radius: ['44%', '68%'],
+      radius: ['30%', '68%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: true,
       label: {
@@ -232,10 +219,8 @@ const categoryOption = computed(() => ({
           left: 'center',
           top: 'middle',
           style: {
-            text: topCategorySummary.value
-              ? `${topCategorySummary.value.category}\n${topCategorySummary.value.percent}%`
-              : `本月支出\n${currency(stats.value.month_total)}`,
-            fill: '#17202a',
+            text: currency(stats.value.month_total),
+            fill: '#dc2626',
             fontSize: 14,
             fontWeight: 700,
             lineHeight: 22,
@@ -245,45 +230,6 @@ const categoryOption = computed(() => ({
       ]
     : [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#94a3b8' } }]
 }))
-
-const trendOption = computed(() => ({
-  color: ['#0f766e'],
-  title: {
-    text: `${selectedYear.value} 年消费趋势`,
-    subtext: '红色节点表示该月支出超过工资收入',
-    left: 8,
-    top: 0,
-    textStyle: { fontSize: 13, fontWeight: 700 },
-    subtextStyle: { color: '#64748b' }
-  },
-  tooltip: {
-    trigger: 'axis',
-    formatter: (params) => {
-      const item = stats.value.monthly_trend[params[0]?.dataIndex]
-      if (!item) return ''
-      if (isFutureMonth(item.month)) return `${item.month}月`
-      return `${item.month}月<br/>支出：${currency(item.total)}<br/>工资：${currency(item.salary_income)}<br/>额外收入：${currency(item.extra_income)}<br/>总收入：${currency(item.total_income)}`
-    }
-  },
-  grid: { left: 48, right: 24, top: 58, bottom: 42 },
-  xAxis: { type: 'category', data: stats.value.monthly_trend.map((item) => `${item.month}月`) },
-  yAxis: { type: 'value' },
-  series: [
-    {
-      type: 'line',
-      smooth: true,
-      areaStyle: { opacity: 0.12 },
-      data: stats.value.monthly_trend.map((item) => ({
-        value: isFutureMonth(item.month) ? null : item.total,
-        itemStyle: !isFutureMonth(item.month) && item.is_over_salary ? { color: '#dc2626' } : undefined
-      }))
-    }
-  ]
-}))
-
-function isFutureMonth(month) {
-  return dayjs(`${selectedYear.value}-${String(month).padStart(2, '0')}-01`).isAfter(dayjs(), 'month')
-}
 
 function emptyStats() {
   return {

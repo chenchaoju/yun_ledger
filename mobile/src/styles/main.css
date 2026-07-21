@@ -368,6 +368,10 @@ textarea {
   gap: 18px;
 }
 
+.dashboard-content-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .chart-card {
   min-width: 0;
 }
@@ -1294,6 +1298,11 @@ textarea {
 
 .analysis-tabs .el-tabs__content {
   overflow: visible;
+}
+
+.analysis-tabs .el-tab-pane {
+  display: grid;
+  gap: 12px;
 }
 
 .analysis-page {

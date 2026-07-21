@@ -50,7 +50,7 @@
           </div>
         </div>
       </el-tab-pane>
-      <el-tab-pane label="年度趋势" name="trend">
+      <el-tab-pane label="年度分析" name="trend">
         <el-card shadow="never" class="chart-card">
           <div class="chart-note">
             <span><i class="legend-dot blue"></i>柱形=月支出</span>
@@ -59,8 +59,13 @@
           </div>
           <BaseChart :option="barOption" :loading="loading" />
         </el-card>
-      </el-tab-pane>
-      <el-tab-pane label="年度剩余" name="balance">
+        <el-card shadow="never" class="chart-card">
+          <div class="chart-note">
+            <span><i class="legend-line teal"></i>绿线=消费趋势</span>
+            <span><i class="legend-dot red"></i>红点=超工资</span>
+          </div>
+          <BaseChart :option="expenseTrendOption" :loading="loading" />
+        </el-card>
         <el-card shadow="never" class="chart-card">
           <div class="chart-note">
             <span><i class="legend-dot teal"></i>柱形=当月剩余</span>
@@ -69,8 +74,6 @@
           </div>
           <BaseChart :option="annualBalanceOption" :loading="loading" />
         </el-card>
-      </el-tab-pane>
-      <el-tab-pane label="余额分析" name="totalBalance">
         <el-card shadow="never" class="chart-card">
           <div class="chart-note">
             <span><i class="legend-line blue"></i>蓝线=余额变化</span>
@@ -131,7 +134,7 @@ const activeAnalysisTab = ref('bill')
 const touchStartX = ref(0)
 const stats = ref(emptyStats())
 const categoryColorMap = ref(categoryColorMapFrom())
-const analysisTabOrder = ['bill', 'trend', 'balance', 'totalBalance', 'daily', 'category']
+const analysisTabOrder = ['bill', 'trend', 'daily', 'category']
 const annualBalance = computed(() => {
   return yearlyBalanceRows.value.reduce((total, item) => {
     if (!item.hasExpense) return total
@@ -158,15 +161,6 @@ const categoryStructureRows = computed(() => {
       percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0
     }
   })
-})
-
-const topCategorySummary = computed(() => {
-  const [topItem] = [...categoryStructureRows.value].sort((left, right) => Number(right.total || 0) - Number(left.total || 0))
-  if (!topItem) return null
-  return {
-    category: topItem.category,
-    percent: topItem.percent
-  }
 })
 
 const annualBillRows = computed(() => {
@@ -367,6 +361,64 @@ const barOption = computed(() => ({
       data: stats.value.monthly_trend.map((item) => (isFutureMonth(item.month) || !hasAnalyzedExpense(item) ? null : item.salary_income))
     }
   ]
+}))
+
+const expenseTrendOption = computed(() => ({
+  color: ['#0f766e'],
+  title: {
+    text: `${selectedYear.value} 年消费趋势`,
+    subtext: '红色节点表示该月支出超过工资收入',
+    left: 8,
+    top: 0,
+    textStyle: { fontSize: 13, fontWeight: 700 },
+    subtextStyle: { color: '#64748b' }
+  },
+  tooltip: {
+    trigger: 'axis',
+    formatter: (params) => {
+      const item = stats.value.monthly_trend[params[0]?.dataIndex]
+      if (!item) return ''
+      if (isFutureMonth(item.month)) return `${item.month}月`
+      if (!hasAnalyzedExpense(item)) return `${item.month}月<br/>暂无支出记录`
+      return [
+        `${item.month}月`,
+        `支出：${currency(item.total)}`,
+        `工资：${currency(item.salary_income)}`,
+        `额外收入：${currency(item.extra_income)}`,
+        `总收入：${currency(item.total_income)}`
+      ].join('<br/>')
+    }
+  },
+  legend: { show: false },
+  grid: { left: 42, right: 10, top: 58, bottom: 30 },
+  xAxis: {
+    type: 'category',
+    data: stats.value.monthly_trend.map((item) => `${item.month}月`),
+    axisLabel: { fontSize: 11 }
+  },
+  yAxis: {
+    type: 'value',
+    splitNumber: 4,
+    axisLabel: { formatter: chartAxisLabel, fontSize: 11 }
+  },
+  series: [
+    {
+      name: '消费趋势',
+      type: 'line',
+      smooth: true,
+      symbolSize: 7,
+      lineStyle: { width: 3, color: '#0f766e' },
+      itemStyle: { color: '#0f766e' },
+      areaStyle: { opacity: 0.12 },
+      data: stats.value.monthly_trend.map((item) => ({
+        value: isFutureMonth(item.month) || !hasAnalyzedExpense(item) ? null : item.total,
+        itemStyle: !isFutureMonth(item.month) && hasAnalyzedExpense(item) && item.is_over_salary ? { color: '#dc2626' } : undefined
+      }))
+    }
+  ],
+  graphic: stats.value.monthly_trend.some((item) => !isFutureMonth(item.month) && hasAnalyzedExpense(item))
+    ? []
+    : [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无支出记录', fill: '#94a3b8' } }]
 }))
 
 const annualBalanceOption = computed(() => ({
@@ -577,27 +629,29 @@ const pieOption = computed(() => ({
   series: [
     {
       type: 'pie',
-      radius: ['40%', '64%'],
+      radius: ['26%', '58%'],
       center: ['50%', '48%'],
-      avoidLabelOverlap: false,
+      avoidLabelOverlap: true,
       label: {
         show: true,
         position: 'outer',
-        color: '#334155',
+        alignTo: 'edge',
+        edgeDistance: 8,
+        bleedMargin: 4,
         fontSize: 10,
         fontWeight: 700,
         lineHeight: 14,
         formatter: (params) => `${params.name}\n${currency(params.value)}`
       },
-      labelLine: { show: true, length: 12, length2: 6 },
-      labelLayout: { hideOverlap: false },
+      labelLine: { show: true, length: 8, length2: 12 },
+      labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap.value[item.category] || '#64748b'
         return {
           name: item.category,
           value: item.total,
           itemStyle: { color },
-          label: { color: '#334155' },
+          label: { color },
           labelLine: { lineStyle: { color } }
         }
       })
@@ -610,10 +664,8 @@ const pieOption = computed(() => ({
           left: 'center',
           top: 'middle',
           style: {
-            text: topCategorySummary.value
-              ? `${topCategorySummary.value.category}\n${topCategorySummary.value.percent}%`
-              : `本月支出\n${currency(stats.value.month_total)}`,
-            fill: '#17202a',
+            text: currency(stats.value.month_total),
+            fill: '#dc2626',
             fontSize: 14,
             fontWeight: 700,
             lineHeight: 22,
