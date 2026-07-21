@@ -229,12 +229,12 @@ async function submit() {
   try {
     if (mode.value === 'login') {
       await authStore.login(form)
-      localStorage.removeItem(autoLoginPausedKey)
+      sessionStorage.removeItem(autoLoginPausedKey)
       saveLoginPreference(authStore.user)
       ElMessage.success('登录成功')
     } else {
       await authStore.register(form)
-      localStorage.removeItem(autoLoginPausedKey)
+      sessionStorage.removeItem(autoLoginPausedKey)
       upsertSavedUser({
         email: form.email,
         label: authStore.user?.username || form.username || form.email,
@@ -262,7 +262,7 @@ watch(rememberPassword, (value) => {
 onMounted(async () => {
   loadLoginPreference()
   const skipAutoLogin = sessionStorage.getItem(skipAutoLoginKey) === '1'
-  const autoLoginPaused = localStorage.getItem(autoLoginPausedKey) === '1'
+  const autoLoginPaused = sessionStorage.getItem(autoLoginPausedKey) === '1'
   if (skipAutoLogin) {
     sessionStorage.removeItem(skipAutoLoginKey)
   }

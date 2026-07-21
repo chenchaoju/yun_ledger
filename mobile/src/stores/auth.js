@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = ''
       this.user = null
       sessionStorage.setItem('skip_auto_login_once', '1')
-      localStorage.setItem(autoLoginPausedKey, '1')
+      sessionStorage.setItem(autoLoginPausedKey, '1')
       localStorage.removeItem('access_token')
       localStorage.removeItem('current_user')
     }

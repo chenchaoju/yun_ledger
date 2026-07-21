@@ -26,3 +26,9 @@ class User(Base):
     expenses = relationship("Expense", back_populates="user", cascade="all, delete-orphan")
     monthly_incomes = relationship("MonthlyIncome", back_populates="user", cascade="all, delete-orphan")
     recurring_expenses = relationship("RecurringExpense", back_populates="user", cascade="all, delete-orphan")
+    category_preference = relationship(
+        "CategoryPreference",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )

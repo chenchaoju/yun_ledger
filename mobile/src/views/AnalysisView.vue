@@ -160,6 +160,15 @@ const categoryStructureRows = computed(() => {
   })
 })
 
+const topCategorySummary = computed(() => {
+  const [topItem] = [...categoryStructureRows.value].sort((left, right) => Number(right.total || 0) - Number(left.total || 0))
+  if (!topItem) return null
+  return {
+    category: topItem.category,
+    percent: topItem.percent
+  }
+})
+
 const annualBillRows = computed(() => {
   const maxMonth = selectedYear.value === dayjs().format('YYYY') ? dayjs().month() + 1 : 12
   return stats.value.monthly_trend
@@ -570,17 +579,25 @@ const pieOption = computed(() => ({
       type: 'pie',
       radius: ['40%', '64%'],
       center: ['50%', '48%'],
+      avoidLabelOverlap: false,
       label: {
-        show: false
+        show: true,
+        position: 'outer',
+        color: '#334155',
+        fontSize: 10,
+        fontWeight: 700,
+        lineHeight: 14,
+        formatter: (params) => `${params.name}\n${currency(params.value)}`
       },
-      labelLine: { show: false },
+      labelLine: { show: true, length: 12, length2: 6 },
+      labelLayout: { hideOverlap: false },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap.value[item.category] || '#64748b'
         return {
           name: item.category,
           value: item.total,
           itemStyle: { color },
-          label: { color },
+          label: { color: '#334155' },
           labelLine: { lineStyle: { color } }
         }
       })
@@ -593,7 +610,9 @@ const pieOption = computed(() => ({
           left: 'center',
           top: 'middle',
           style: {
-            text: `本月支出\n${currency(stats.value.month_total)}`,
+            text: topCategorySummary.value
+              ? `${topCategorySummary.value.category}\n${topCategorySummary.value.percent}%`
+              : `本月支出\n${currency(stats.value.month_total)}`,
             fill: '#17202a',
             fontSize: 14,
             fontWeight: 700,

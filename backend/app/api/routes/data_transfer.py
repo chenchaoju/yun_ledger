@@ -9,12 +9,14 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.models.category_preference import CategoryPreference
 from app.models.expense import Expense
 from app.models.monthly_income import MonthlyIncome
 from app.models.recurring_expense import RecurringExpense
 from app.models.user import User
 from app.schemas.expense import ExpenseBase
 from app.schemas.income import ExtraIncomeItem
+from app.schemas.category import CategoryPreferenceBase
 from app.schemas.recurring_expense import RecurringExpenseBase
 from app.services.income_items import extra_income_total, normalize_extra_income_items
 
@@ -43,12 +45,14 @@ class DataTransferPayload(BaseModel):
     expenses: list[DataTransferExpense] = Field(default_factory=list)
     monthly_incomes: list[DataTransferMonthlyIncome] = Field(default_factory=list)
     recurring_expenses: list[DataTransferRecurringExpense] = Field(default_factory=list)
+    category_preference: CategoryPreferenceBase | None = None
 
 
 class DataImportResult(BaseModel):
     expenses: int
     monthly_incomes: int
     recurring_expenses: int
+    category_preference: bool = False
 
 
 @router.get("/export", response_model=DataTransferPayload)
@@ -71,6 +75,7 @@ def export_data(
         .where(RecurringExpense.user_id == current_user.id)
         .order_by(RecurringExpense.enabled.desc(), RecurringExpense.id.asc())
     ).all()
+    category_preference = db.scalar(select(CategoryPreference).where(CategoryPreference.user_id == current_user.id))
 
     return DataTransferPayload(
         version=1,
@@ -107,6 +112,14 @@ def export_data(
             )
             for item in recurring_expenses
         ],
+        category_preference=CategoryPreferenceBase(
+            custom_categories=category_preference.custom_categories,
+            hidden_category_values=category_preference.hidden_category_values,
+            category_order=category_preference.category_order,
+            category_colors=category_preference.category_colors,
+        )
+        if category_preference
+        else None,
     )
 
 
@@ -128,6 +141,7 @@ def import_data(
         db.execute(delete(Expense).where(Expense.user_id == current_user.id))
         db.execute(delete(MonthlyIncome).where(MonthlyIncome.user_id == current_user.id))
         db.execute(delete(RecurringExpense).where(RecurringExpense.user_id == current_user.id))
+        db.execute(delete(CategoryPreference).where(CategoryPreference.user_id == current_user.id))
 
         for expense in payload.expenses:
             db.add(Expense(user_id=current_user.id, **expense.model_dump()))
@@ -148,6 +162,17 @@ def import_data(
         for item in payload.recurring_expenses:
             db.add(RecurringExpense(user_id=current_user.id, **item.model_dump()))
 
+        if payload.category_preference:
+            db.add(
+                CategoryPreference(
+                    user_id=current_user.id,
+                    custom_categories=[item.model_dump() for item in payload.category_preference.custom_categories],
+                    hidden_category_values=payload.category_preference.hidden_category_values,
+                    category_order=payload.category_preference.category_order,
+                    category_colors=payload.category_preference.category_colors,
+                )
+            )
+
         db.commit()
     except Exception:
         db.rollback()
@@ -157,4 +182,5 @@ def import_data(
         expenses=len(payload.expenses),
         monthly_incomes=len(monthly_income_by_period),
         recurring_expenses=len(payload.recurring_expenses),
+        category_preference=payload.category_preference is not None,
     )

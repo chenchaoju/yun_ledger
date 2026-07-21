@@ -179,6 +179,18 @@
           <el-input v-model.trim="newCategoryName" maxlength="12" placeholder="例如：宠物、停车、咖啡" />
           <el-button type="primary" @click="addCategory">添加</el-button>
         </div>
+        <div class="category-color-palette" aria-label="分类颜色">
+          <button
+            v-for="color in categoryColorOptions"
+            :key="color"
+            type="button"
+            class="category-color-dot"
+            :class="{ active: newCategoryColor === color }"
+            :style="{ '--category-create-color': color }"
+            :aria-label="`选择颜色 ${color}`"
+            @click="newCategoryColor = color"
+          />
+        </div>
         <div class="icon-picker">
           <button
             v-for="item in categoryIconOptions"
@@ -283,9 +295,13 @@ import {
   buildCustomCategory,
   expenseCategories,
   loadCategoryOrder,
+  loadCategoryColors,
+  loadCategoryPreferenceFromServer,
   loadCustomCategories,
   loadHiddenCategoryValues,
   saveCategoryOrder,
+  saveCategoryColors,
+  saveCategoryPreferenceToServer,
   saveCustomCategories,
   saveHiddenCategoryValues
 } from '../constants/categories'
@@ -307,9 +323,11 @@ const recurringDialogVisible = ref(false)
 const avatarFileInput = ref(null)
 const newCategoryName = ref('')
 const newCategoryIcon = ref('MoreFilled')
+const newCategoryColor = ref('#0ea5e9')
 const customCategories = ref(loadCustomCategories())
 const hiddenCategoryValues = ref(loadHiddenCategoryValues())
 const categoryOrder = ref(loadCategoryOrder())
+const categoryColors = ref(loadCategoryColors())
 const draggedCategoryValue = ref('')
 const avatarPreference = ref(loadAvatarPreference())
 const profileForm = reactive({
@@ -343,7 +361,18 @@ const defaultAvatarOptions = [
   { value: 'default-dog', label: '白狗狗', image: publicAsset('default-avatar-dog.jpg') },
   { value: 'black-cat', label: '黑猫', image: publicAsset('default-avatar-black-cat.jpg') }
 ]
-
+const categoryColorOptions = [
+  '#0ea5e9',
+  '#22c55e',
+  '#f97316',
+  '#db2777',
+  '#9333ea',
+  '#14b8a6',
+  '#e11d48',
+  '#dc2626',
+  '#0891b2',
+  '#64748b'
+]
 const displayName = computed(() => authStore.user?.username || authStore.user?.email || '未命名用户')
 const accountLabel = computed(() => authStore.user?.email || '')
 const avatarMode = computed(() => (avatarPreference.value.mode === 'custom' && avatarPreference.value.image ? 'custom' : 'preset'))
@@ -374,6 +403,7 @@ const allManagedCategories = computed(() => {
   categoryOrder.value
   customCategories.value
   hiddenCategoryValues.value
+  categoryColors.value
   return allExpenseCategories({ includeHidden: true })
 })
 const recurringSummary = computed(() => {
@@ -535,7 +565,23 @@ function normalizedRecurringDate(item) {
   return baseDate.month(month - 1).date(Math.min(day, baseDate.month(month - 1).daysInMonth())).format('YYYY-MM-DD')
 }
 
-function addCategory() {
+function refreshCategoryState() {
+  customCategories.value = loadCustomCategories()
+  hiddenCategoryValues.value = loadHiddenCategoryValues()
+  categoryOrder.value = loadCategoryOrder()
+  categoryColors.value = loadCategoryColors()
+}
+
+async function persistCategoryPreference() {
+  try {
+    await saveCategoryPreferenceToServer()
+    refreshCategoryState()
+  } catch {
+    refreshCategoryState()
+  }
+}
+
+async function addCategory() {
   const name = newCategoryName.value.trim()
   if (!name) {
     ElMessage.error('请输入分类名称')
@@ -546,12 +592,17 @@ function addCategory() {
     ElMessage.error('分类已存在')
     return
   }
-  customCategories.value = [...customCategories.value, buildCustomCategory(name, customCategories.value.length, newCategoryIcon.value)]
+  customCategories.value = [
+    ...customCategories.value,
+    buildCustomCategory(name, customCategories.value.length, newCategoryIcon.value, newCategoryColor.value)
+  ]
   saveCustomCategories(customCategories.value)
   categoryOrder.value = [...allManagedCategories.value.map((item) => item.value), name]
   saveCategoryOrder(categoryOrder.value)
   newCategoryName.value = ''
   newCategoryIcon.value = 'MoreFilled'
+  newCategoryColor.value = '#0ea5e9'
+  await persistCategoryPreference()
   ElMessage.success('分类已添加')
 }
 
@@ -573,6 +624,11 @@ async function removeCategory(value) {
   saveCategoryOrder(categoryOrder.value)
   hiddenCategoryValues.value = hiddenCategoryValues.value.filter((item) => item !== value)
   saveHiddenCategoryValues(hiddenCategoryValues.value)
+  const nextColors = { ...categoryColors.value }
+  delete nextColors[value]
+  categoryColors.value = nextColors
+  saveCategoryColors(nextColors)
+  await persistCategoryPreference()
 }
 
 function reorderCategories(fromValue, toValue) {
@@ -606,8 +662,11 @@ function moveCategoryDrag(event) {
   reorderCategories(draggedCategoryValue.value, targetValue)
 }
 
-function stopCategoryDrag() {
+async function stopCategoryDrag() {
   window.removeEventListener('pointermove', moveCategoryDrag)
+  if (draggedCategoryValue.value) {
+    await persistCategoryPreference()
+  }
   draggedCategoryValue.value = ''
 }
 
@@ -615,7 +674,7 @@ function isCategoryHidden(value) {
   return hiddenCategoryValues.value.includes(value)
 }
 
-function toggleCategory(value) {
+async function toggleCategory(value) {
   if (isCategoryHidden(value)) {
     hiddenCategoryValues.value = hiddenCategoryValues.value.filter((item) => item !== value)
   } else {
@@ -627,6 +686,7 @@ function toggleCategory(value) {
     hiddenCategoryValues.value = [...hiddenCategoryValues.value, value]
   }
   saveHiddenCategoryValues(hiddenCategoryValues.value)
+  await persistCategoryPreference()
 }
 
 function openAvatarDialog() {
@@ -780,7 +840,16 @@ async function deleteAccount() {
   router.push({ name: 'login' })
 }
 
-onMounted(loadRecurringExpenses)
+onMounted(async () => {
+  await Promise.all([
+    loadRecurringExpenses(),
+    loadCategoryPreferenceFromServer()
+      .then(refreshCategoryState)
+      .catch(() => {
+        refreshCategoryState()
+      })
+  ])
+})
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', moveCategoryDrag)

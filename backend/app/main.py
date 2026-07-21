@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
-from app.api.routes import auth, data_transfer, expenses, incomes, records, recurring_expenses, stats
+from app.api.routes import auth, categories, data_transfer, expenses, incomes, records, recurring_expenses, stats
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(categories.router, prefix=settings.api_prefix)
 app.include_router(expenses.router, prefix=settings.api_prefix)
 app.include_router(incomes.router, prefix=settings.api_prefix)
 app.include_router(stats.router, prefix=settings.api_prefix)
@@ -47,6 +48,14 @@ def database_health_check() -> dict:
         "database": database,
         "tables": tables,
         "required_tables_ready": all(
-            table in tables for table in ["users", "expenses", "monthly_incomes", "recurring_expenses", "alembic_version"]
+            table in tables
+            for table in [
+                "users",
+                "expenses",
+                "monthly_incomes",
+                "recurring_expenses",
+                "category_preferences",
+                "alembic_version",
+            ]
         ),
     }

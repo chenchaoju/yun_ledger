@@ -51,13 +51,13 @@ http.interceptors.response.use(
 
     if (status === 401 && window.location.pathname !== targetLoginPath) {
       sessionStorage.setItem(skipAutoLoginKey, '1')
-      localStorage.setItem(autoLoginPausedKey, '1')
+      sessionStorage.setItem(autoLoginPausedKey, '1')
       localStorage.removeItem('access_token')
       localStorage.removeItem('current_user')
       window.location.href = targetLoginPath
     }
 
-    if (status !== 401 || window.location.pathname === targetLoginPath) {
+    if (!error.config?.silent && (status !== 401 || window.location.pathname === targetLoginPath)) {
       ElMessage.error(message)
     }
 

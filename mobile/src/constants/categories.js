@@ -1,3 +1,5 @@
+import http from '../utils/http'
+
 export const expenseCategories = [
   { label: '餐饮', value: '餐饮', color: '#f97316', icon: 'Bowl' },
   { label: '交通', value: '交通', color: '#2563eb', icon: 'Van' },
@@ -15,8 +17,13 @@ export const expenseCategories = [
 const customCategoryStorageKey = 'finance_mobile_custom_categories'
 const hiddenCategoryStorageKey = 'finance_mobile_hidden_categories'
 const categoryOrderStorageKey = 'finance_mobile_category_order'
+const categoryColorsStorageKey = 'finance_mobile_category_colors'
 export const categoryChangedEvent = 'finance-mobile-categories-changed'
 const customColors = ['#0ea5e9', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#64748b']
+
+function notifyCategoryChanged() {
+  window.dispatchEvent(new CustomEvent(categoryChangedEvent))
+}
 
 export function loadCustomCategories() {
   try {
@@ -29,7 +36,7 @@ export function loadCustomCategories() {
 
 export function saveCustomCategories(categories) {
   localStorage.setItem(customCategoryStorageKey, JSON.stringify(categories))
-  window.dispatchEvent(new CustomEvent(categoryChangedEvent))
+  notifyCategoryChanged()
 }
 
 export function loadHiddenCategoryValues() {
@@ -43,7 +50,7 @@ export function loadHiddenCategoryValues() {
 
 export function saveHiddenCategoryValues(values) {
   localStorage.setItem(hiddenCategoryStorageKey, JSON.stringify([...new Set(values.filter(Boolean))]))
-  window.dispatchEvent(new CustomEvent(categoryChangedEvent))
+  notifyCategoryChanged()
 }
 
 export function loadCategoryOrder() {
@@ -57,18 +64,81 @@ export function loadCategoryOrder() {
 
 export function saveCategoryOrder(values) {
   localStorage.setItem(categoryOrderStorageKey, JSON.stringify([...new Set(values.filter(Boolean))]))
-  window.dispatchEvent(new CustomEvent(categoryChangedEvent))
+  notifyCategoryChanged()
 }
 
-export function buildCustomCategory(name, index = 0, icon = 'MoreFilled') {
+export function loadCategoryColors() {
+  try {
+    const value = JSON.parse(localStorage.getItem(categoryColorsStorageKey) || '{}')
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveCategoryColors(values) {
+  localStorage.setItem(categoryColorsStorageKey, JSON.stringify(values || {}))
+  notifyCategoryChanged()
+}
+
+export function readLocalCategoryPreference() {
+  return {
+    custom_categories: loadCustomCategories(),
+    hidden_category_values: loadHiddenCategoryValues(),
+    category_order: loadCategoryOrder(),
+    category_colors: loadCategoryColors()
+  }
+}
+
+export function hasCategoryPreferenceValue(preference = readLocalCategoryPreference()) {
+  return Boolean(
+    preference.custom_categories?.length ||
+      preference.hidden_category_values?.length ||
+      preference.category_order?.length ||
+      Object.keys(preference.category_colors || {}).length
+  )
+}
+
+export function applyCategoryPreference(preference) {
+  localStorage.setItem(customCategoryStorageKey, JSON.stringify(preference?.custom_categories || []))
+  localStorage.setItem(hiddenCategoryStorageKey, JSON.stringify(preference?.hidden_category_values || []))
+  localStorage.setItem(categoryOrderStorageKey, JSON.stringify(preference?.category_order || []))
+  localStorage.setItem(categoryColorsStorageKey, JSON.stringify(preference?.category_colors || {}))
+  notifyCategoryChanged()
+}
+
+export async function saveCategoryPreferenceToServer(preference = readLocalCategoryPreference()) {
+  const { data } = await http.put('/categories', preference, { silent: true })
+  applyCategoryPreference(data)
+  return data
+}
+
+export async function loadCategoryPreferenceFromServer() {
+  const localPreference = readLocalCategoryPreference()
+  const { data } = await http.get('/categories', { silent: true })
+  if (!hasCategoryPreferenceValue(data) && hasCategoryPreferenceValue(localPreference)) {
+    return saveCategoryPreferenceToServer(localPreference)
+  }
+  applyCategoryPreference(data)
+  return data
+}
+
+export function buildCustomCategory(name, index = 0, icon = 'MoreFilled', color = '') {
   const label = String(name || '').trim()
   return {
     label,
     value: label,
-    color: customColors[index % customColors.length],
+    color: color || customColors[index % customColors.length],
     icon,
     custom: true
   }
+}
+
+function applyCategoryColors(categories, colors = loadCategoryColors()) {
+  return categories.map((item) => ({
+    ...item,
+    color: colors[item.value] || item.color
+  }))
 }
 
 function applyCategoryOrder(categories, order = loadCategoryOrder()) {
@@ -85,8 +155,12 @@ function applyCategoryOrder(categories, order = loadCategoryOrder()) {
 export function allExpenseCategories(options = {}) {
   const { includeHidden = false } = options
   const custom = loadCustomCategories()
+  const colors = loadCategoryColors()
   const defaultValues = new Set(expenseCategories.map((item) => item.value))
-  const all = applyCategoryOrder([...expenseCategories, ...custom.filter((item) => !defaultValues.has(item.value))])
+  const all = applyCategoryColors(
+    applyCategoryOrder([...expenseCategories, ...custom.filter((item) => !defaultValues.has(item.value))]),
+    colors
+  )
   if (includeHidden) return all
   const hiddenValues = new Set(loadHiddenCategoryValues())
   return all.filter((item) => !hiddenValues.has(item.value))

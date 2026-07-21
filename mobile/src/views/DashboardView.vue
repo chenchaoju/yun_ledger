@@ -164,6 +164,24 @@ const categoryStructureRows = computed(() => {
   })
 })
 
+const topCategoryLabelNames = computed(() => {
+  return new Set(
+    [...stats.value.category_summary]
+      .sort((left, right) => Number(right.total || 0) - Number(left.total || 0))
+      .slice(0, 3)
+      .map((item) => item.category)
+  )
+})
+
+const topCategorySummary = computed(() => {
+  const [topItem] = [...categoryStructureRows.value].sort((left, right) => Number(right.total || 0) - Number(left.total || 0))
+  if (!topItem) return null
+  return {
+    category: topItem.category,
+    percent: topItem.percent
+  }
+})
+
 const categoryOption = computed(() => ({
   color: stats.value.category_summary.map((item) => categoryColorMap.value[item.category] || '#64748b'),
   tooltip: {
@@ -183,14 +201,26 @@ const categoryOption = computed(() => ({
         show: false
       },
       labelLine: { show: false },
+      labelLayout: { hideOverlap: true },
       data: stats.value.category_summary.map((item) => {
         const color = categoryColorMap.value[item.category] || '#64748b'
+        const showLabel = topCategoryLabelNames.value.has(item.category)
         return {
           name: item.category,
           value: item.total,
           itemStyle: { color },
-          label: { color },
-          labelLine: { lineStyle: { color } }
+          label: {
+            show: showLabel,
+            position: 'inside',
+            color: '#ffffff',
+            fontSize: 10,
+            fontWeight: 700,
+            lineHeight: 14,
+            textShadowColor: 'rgba(15, 23, 42, 0.35)',
+            textShadowBlur: 3,
+            formatter: () => `${item.category}\n${currency(item.total)}`
+          },
+          labelLine: { show: false }
         }
       })
     }
@@ -202,7 +232,9 @@ const categoryOption = computed(() => ({
           left: 'center',
           top: 'middle',
           style: {
-            text: `本月支出\n${currency(stats.value.month_total)}`,
+            text: topCategorySummary.value
+              ? `${topCategorySummary.value.category}\n${topCategorySummary.value.percent}%`
+              : `本月支出\n${currency(stats.value.month_total)}`,
             fill: '#17202a',
             fontSize: 14,
             fontWeight: 700,
